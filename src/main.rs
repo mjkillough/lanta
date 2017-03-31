@@ -45,6 +45,21 @@ impl Win {
 
         Ok(())
     }
+
+    fn grab_keys(&mut self, keys: &[Key]) {
+        for key in keys.iter() {
+            unsafe {
+                let keycode = xlib::XKeysymToKeycode(self.display, key.keysym as u64) as i32;
+                xlib::XGrabKey(self.display,
+                               keycode,
+                               key.mod_mask,
+                               self.xwindow,
+                               0,
+                               xlib::GrabModeAsync,
+                               xlib::GrabModeAsync);
+            }
+        }
+    }
 }
 
 
@@ -150,8 +165,36 @@ fn xevent_to_str(event: &xlib::XEvent) -> &str {
 }
 
 
+fn key_handler() {
+    info!("Key press!");
+}
+
+
+struct Key {
+    mod_mask: std::os::raw::c_uint,
+    keysym: std::os::raw::c_uint,
+    handler: Box<Fn()>,
+}
+
+
+impl std::fmt::Display for Key {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f,
+               "Key {{ mod_mask: {}, keysym: {} }}",
+               self.mod_mask,
+               self.keysym)
+    }
+}
+
+
 fn main() {
     env_logger::init().unwrap();
+
+    let keys = vec![Key {
+                        mod_mask: xlib::Mod4Mask,
+                        keysym: x11::keysym::XK_T,
+                        handler: Box::new(key_handler),
+                    }];
 
     unsafe {
         let disp: *mut Display = XOpenDisplay(ptr::null_mut());
@@ -188,16 +231,19 @@ fn main() {
             match event.get_type() {
                 xlib::MapRequest => {
                     let event = xlib::XMapRequestEvent::from(event);
+                    let mut window = Win {
+                        display: disp,
+                        xwindow: event.window,
+                    };
+                    window.grab_keys(&keys);
 
-                    stack.push(Win {
-                                   display: disp,
-                                   xwindow: event.window,
-                               });
+                    stack.push(window);
 
                     layout.layout(attrs.width, attrs.height, stack.as_mut());
 
                     // TODO: Make this into a method on Win?
                     xlib::XMapWindow(disp, event.window);
+
                 }
 
                 xlib::DestroyNotify => {
@@ -207,6 +253,24 @@ fn main() {
 
                     layout.layout(attrs.width, attrs.height, stack.as_mut());
                 }
+
+                xlib::KeyPress => {
+                    let event = xlib::XKeyEvent::from(event);
+
+                    for key in keys.iter() {
+                        let keycode = xlib::XKeysymToKeycode(disp, key.keysym as u64) as u32;
+                        debug!("KeyPress: state={}, keycode={}", event.state, event.keycode);
+
+                        // TODO: Allow extra mod keys to be pressed at the same time. (Add test!)
+                        if (event.state & key.mod_mask != 0) && event.keycode == keycode {
+                            info!("KeyPress matches key: {}", key);
+                            (key.handler)();
+                            break;
+                        }
+                    }
+
+                }
+
                 _ => {}
             }
 
