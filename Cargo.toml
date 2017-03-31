@@ -1,0 +1,6 @@
+[package]
+name = "rwm"
+version = "0.1.0"
+authors = ["Michael Killough <michaeljkillough@gmail.com>"]
+
+[dependencies]
