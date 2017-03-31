@@ -220,6 +220,10 @@ fn main() {
 
         let mut stack: Vec<Win> = Vec::new();
 
+        // Focus is an index into the stack. We could do better and use the borrow checker to ensure
+        // that it doesn't point at the wrong data when an item is added/removed from the stack.
+        let mut focus: Option<usize> = None;
+
         let layout = TiledLayout {};
 
         loop {
@@ -236,6 +240,8 @@ fn main() {
                         xwindow: event.window,
                     };
                     window.grab_keys(&keys);
+
+                    xlib::XSelectInput(disp, window.xwindow, xlib::EnterWindowMask);
 
                     stack.push(window);
 
@@ -269,6 +275,13 @@ fn main() {
                         }
                     }
 
+                }
+
+                xlib::EnterNotify => {
+                    let event = xlib::XEnterWindowEvent::from(event);
+
+                    focus = stack.iter().position(|ref w| w.xwindow == event.window);
+                    debug!("EnterNotify: {}", focus);
                 }
 
                 _ => {}
