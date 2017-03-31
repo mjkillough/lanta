@@ -90,6 +90,27 @@ fn xevent_to_str(event: &xlib::XEvent) -> &str {
     }
 }
 
+unsafe fn layout(disp: *mut Display, attrs: &xlib::XWindowAttributes, stack: &Vec<Window>) {
+    if stack.len() == 0 {
+        return;
+    }
+
+    let height = attrs.height / stack.len() as i32;
+
+    for (i, window) in stack.iter().enumerate() {
+        let i = i as i32;
+        let mut changes: xlib::XWindowChanges = std::mem::zeroed();
+        changes.x = 0;
+        changes.y = i * height;
+        changes.width = attrs.width;
+        changes.height = height;
+        let flags = xlib::CWX | xlib::CWY | xlib::CWWidth | xlib::CWHeight;
+        xlib::XConfigureWindow(disp,
+                               *window,
+                               flags as u32,
+                               &mut changes);
+    }
+}
 
 fn main() {
     env_logger::init().unwrap();
@@ -111,6 +132,13 @@ fn main() {
 
         XSetErrorHandler(Some(error_handler));
 
+
+        let mut attrs: xlib::XWindowAttributes = std::mem::zeroed();
+        xlib::XGetWindowAttributes(disp, root, &mut attrs);
+        info!("Root window has geometry: {}x{}", attrs.width, attrs.height);
+
+        let mut stack: Vec<Window> = Vec::new();
+
         loop {
             info!("Getting event...");
             let mut event = xlib::XEvent { pad: [0; 24] };
@@ -118,13 +146,27 @@ fn main() {
             info!("Received event: {}", xevent_to_str(&event));
 
             match event.get_type() {
-                xlib::CreateNotify => debug!("CreateNotify"),
                 xlib::MapRequest => {
                     let event = xlib::XMapRequestEvent::from(event);
+
+                    stack.push(event.window);
+
+                    layout(disp, &attrs, &stack);
+
                     xlib::XMapWindow(disp, event.window);
                 }
-                _ => {},
+
+                xlib::DestroyNotify => {
+                    let event = xlib::XDestroyWindowEvent::from(event);
+
+                    stack.iter().position(|&w| w == event.window).map(|index| stack.remove(index));
+
+                    layout(disp, &attrs, &stack);
+                }
+                _ => {}
             }
+
+            println!("Stack: {:?}", stack);
         }
 
     };
