@@ -7,6 +7,7 @@ extern crate x11;
 use std::ffi::CString;
 use std::os::raw::{c_int, c_char};
 use std::ptr;
+use std::convert::From;
 
 use x11::xlib;
 use x11::xlib::{BadAccess, Display, Window, XErrorEvent, XOpenDisplay, XDefaultRootWindow,
@@ -45,6 +46,51 @@ unsafe extern "C" fn error_handler(disp: *mut Display, err: *mut XErrorEvent) ->
 }
 
 
+fn xevent_to_str(event: &xlib::XEvent) -> &str {
+    match event.get_type() {
+        2 => "KeyPress",
+        3 => "KeyRelease",
+        4 => "ButtonPress",
+        5 => "ButtonRelease",
+        6 => "MotionNotify",
+        7 => "EnterNotify",
+        8 => "LeaveNotify",
+        9 => "FocusIn",
+        10 => "FocusOut",
+        11 => "KeymapNotify",
+        12 => "Expose",
+        13 => "GraphicsExpose",
+        14 => "NoExpose",
+        15 => "VisibilityNotify",
+        16 => "CreateNotify",
+        17 => "DestroyNotify",
+        18 => "UnmapNotify",
+        19 => "MapNotify",
+        20 => "MapRequest",
+        21 => "ReparentNotify",
+        22 => "ConfigureNotify",
+        23 => "ConfigureRequest",
+        24 => "GravityNotify",
+        25 => "ResizeRequest",
+        26 => "CirculateNotify",
+        27 => "CirculateRequest",
+        28 => "PropertyNotify",
+        29 => "SelectionClear",
+        30 => "SelectionRequest",
+        31 => "SelectionNotify",
+        32 => "ColormapNotify",
+        33 => "ClientMessage",
+        34 => "MappingNotify",
+        35 => "GenericEvent",
+        36 => "LASTEvent",
+        _ => {
+            error!("Unknown XEvent type: {}", event.get_type());
+            "Unknown"
+        }
+    }
+}
+
+
 fn main() {
     env_logger::init().unwrap();
 
@@ -64,6 +110,22 @@ fn main() {
         info!("We are now the WM");
 
         XSetErrorHandler(Some(error_handler));
+
+        loop {
+            info!("Getting event...");
+            let mut event = xlib::XEvent { pad: [0; 24] };
+            xlib::XNextEvent(disp, &mut event);
+            info!("Received event: {}", xevent_to_str(&event));
+
+            match event.get_type() {
+                xlib::CreateNotify => debug!("CreateNotify"),
+                xlib::MapRequest => {
+                    let event = xlib::XMapRequestEvent::from(event);
+                    xlib::XMapWindow(disp, event.window);
+                }
+                _ => {},
+            }
+        }
 
     };
     println!("Hello, world!");
