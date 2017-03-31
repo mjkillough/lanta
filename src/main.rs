@@ -25,7 +25,7 @@ impl Win {
     // Does this really need to be &mut self? It feels light it ought to be as it is actually
     // modifying the underlying window, even if we're not actually modifying the value as far as
     // Rust is concerned.
-    fn position(&mut self, x: i32, y: i32, width: i32, height: i32) -> Result<(), ()> {
+    fn position(&mut self, x: i32, y: i32, width: i32, height: i32) -> Result<(), String> {
         let mut changes = xlib::XWindowChanges {
             x: x,
             y: y,
@@ -64,14 +64,14 @@ impl Win {
 
 
 trait Layout {
-    fn layout(&self, width: i32, height: i32, stack: &mut [Win]) -> Result<(), ()>;
+    fn layout(&self, width: i32, height: i32, stack: &mut [Win]) -> Result<(), String>;
 }
 
 
 struct TiledLayout;
 
 impl Layout for TiledLayout {
-    fn layout(&self, width: i32, height: i32, stack: &mut [Win]) -> Result<(), ()> {
+    fn layout(&self, width: i32, height: i32, stack: &mut [Win]) -> Result<(), String> {
         if stack.len() == 0 {
             return Ok(());
         }
@@ -187,6 +187,78 @@ impl std::fmt::Display for Key {
 }
 
 
+struct Config {
+    keys: Vec<Key>,
+    layout: Box<Layout>,
+}
+
+
+struct RustWindowManager {
+    display: *mut Display,
+    root: Window, // Could be Win?
+
+    config: Config,
+
+    stack: Vec<Win>,
+    // Focus is an index into the stack. We could do better and use the borrow checker to ensure
+    // that it doesn't point at the wrong data when an item is added/removed from the stack.
+    focus: Option<usize>
+}
+
+impl RustWindowManager {
+    fn new(config: Config) -> Result<Self, String> {
+        let (display, root) = unsafe {
+            let display: *mut Display = XOpenDisplay(ptr::null_mut());
+            if display.is_null() {
+                return Err("XOpenDisplay() returned null".to_owned());
+            }
+
+            let root: Window = XDefaultRootWindow(display);
+            if root == 0 {
+                return Err("XDefaultRootWindow returned 0".to_owned());
+            }
+
+            (display, root)
+        };
+
+        // Install ourselves as the WM.
+        unsafe {
+            // It's tricky to get state from the error handler to here, so we install a special handler
+            // while becoming the WM that panics on error.
+            XSetErrorHandler(Some(error_handler_init));
+            xlib::XSelectInput(display,
+                            root,
+                            xlib::SubstructureNotifyMask | xlib::SubstructureRedirectMask);
+            xlib::XSync(display, 0);
+
+            // If we get this far, then our error handler didn't panic. Set a more useful error handler.
+            XSetErrorHandler(Some(error_handler));
+        }
+
+        Ok(RustWindowManager {
+            display: display,
+            root: root,
+
+            config: config,
+
+            stack: Vec::new(),
+            focus: None,
+        })
+    }
+
+    fn layout(&mut self) -> Result<(), String> {
+        let (width, height) = unsafe {
+            let mut attrs: xlib::XWindowAttributes = std::mem::zeroed();
+            xlib::XGetWindowAttributes(self.display, self.root, &mut attrs);
+            info!("Root window has geometry: {}x{}", attrs.width, attrs.height);
+            (attrs.width, attrs.height)
+        };
+
+        self.config.layout.layout(width, height, &mut self.stack)
+    }
+}
+
+
 fn main() {
     env_logger::init().unwrap();
 
@@ -195,76 +267,50 @@ fn main() {
                         keysym: x11::keysym::XK_T,
                         handler: Box::new(key_handler),
                     }];
+    let layout = Box::new(TiledLayout {});
+    let config = Config { keys: keys, layout: layout };
+
+    let mut wm = RustWindowManager::new(config).unwrap();
 
     unsafe {
-        let disp: *mut Display = XOpenDisplay(ptr::null_mut());
-        assert!(!disp.is_null());
-        let root: Window = XDefaultRootWindow(disp);
-        assert!(root != 0);
-
-        XSetErrorHandler(Some(error_handler_init));
-        xlib::XSelectInput(disp,
-                           root,
-                           xlib::SubstructureNotifyMask | xlib::SubstructureRedirectMask);
-        xlib::XSync(disp, 0);
-
-        // If we get this far, then our panicing error handler didn't complain!
-        info!("We are now the WM");
-
-        XSetErrorHandler(Some(error_handler));
-
-
-        let mut attrs: xlib::XWindowAttributes = std::mem::zeroed();
-        xlib::XGetWindowAttributes(disp, root, &mut attrs);
-        info!("Root window has geometry: {}x{}", attrs.width, attrs.height);
-
-        let mut stack: Vec<Win> = Vec::new();
-
-        // Focus is an index into the stack. We could do better and use the borrow checker to ensure
-        // that it doesn't point at the wrong data when an item is added/removed from the stack.
-        let mut focus: Option<usize> = None;
-
-        let layout = TiledLayout {};
-
         loop {
-            info!("Getting event...");
             let mut event = xlib::XEvent { pad: [0; 24] };
-            xlib::XNextEvent(disp, &mut event);
+            xlib::XNextEvent(wm.display, &mut event);
             info!("Received event: {}", xevent_to_str(&event));
 
             match event.get_type() {
                 xlib::MapRequest => {
                     let event = xlib::XMapRequestEvent::from(event);
                     let mut window = Win {
-                        display: disp,
+                        display: wm.display,
                         xwindow: event.window,
                     };
-                    window.grab_keys(&keys);
+                    window.grab_keys(&wm.config.keys);
 
-                    xlib::XSelectInput(disp, window.xwindow, xlib::EnterWindowMask);
+                    xlib::XSelectInput(wm.display, window.xwindow, xlib::EnterWindowMask);
 
-                    stack.push(window);
+                    wm.stack.push(window);
 
-                    layout.layout(attrs.width, attrs.height, stack.as_mut());
+                    wm.layout();
 
                     // TODO: Make this into a method on Win?
-                    xlib::XMapWindow(disp, event.window);
+                    xlib::XMapWindow(wm.display, event.window);
 
                 }
 
                 xlib::DestroyNotify => {
                     let event = xlib::XDestroyWindowEvent::from(event);
 
-                    stack.iter().position(|ref w| w.xwindow == event.window).map(|index| stack.remove(index));
+                    wm.stack.iter().position(|ref w| w.xwindow == event.window).map(|index| wm.stack.remove(index));
 
-                    layout.layout(attrs.width, attrs.height, stack.as_mut());
+                    wm.layout();
                 }
 
                 xlib::KeyPress => {
                     let event = xlib::XKeyEvent::from(event);
 
-                    for key in keys.iter() {
-                        let keycode = xlib::XKeysymToKeycode(disp, key.keysym as u64) as u32;
+                    for key in wm.config.keys.iter() {
+                        let keycode = xlib::XKeysymToKeycode(wm.display, key.keysym as u64) as u32;
                         debug!("KeyPress: state={}, keycode={}", event.state, event.keycode);
 
                         // TODO: Allow extra mod keys to be pressed at the same time. (Add test!)
@@ -280,14 +326,14 @@ fn main() {
                 xlib::EnterNotify => {
                     let event = xlib::XEnterWindowEvent::from(event);
 
-                    focus = stack.iter().position(|ref w| w.xwindow == event.window);
-                    debug!("EnterNotify: {}", focus);
+                    wm.focus = wm.stack.iter().position(|ref w| w.xwindow == event.window);
+                    debug!("EnterNotify: {:?}", wm.focus);
                 }
 
                 _ => {}
             }
 
-            println!("Stack: {:?}", stack);
+            println!("Stack: {:?}", wm.stack);
         }
 
     };
