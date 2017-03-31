@@ -14,6 +14,65 @@ use x11::xlib::{BadAccess, Display, Window, XErrorEvent, XOpenDisplay, XDefaultR
                 XSetErrorHandler};
 
 
+#[derive(Debug)]
+struct Win {
+    display: *mut Display,
+    xwindow: Window,
+}
+
+
+impl Win {
+    // Does this really need to be &mut self? It feels light it ought to be as it is actually
+    // modifying the underlying window, even if we're not actually modifying the value as far as
+    // Rust is concerned.
+    fn position(&mut self, x: i32, y: i32, width: i32, height: i32) -> Result<(), ()> {
+        let mut changes = xlib::XWindowChanges {
+            x: x,
+            y: y,
+            width: width,
+            height: height,
+
+            // Ignored:
+            border_width: 0,
+            sibling: 0,
+            stack_mode: 0,
+        };
+        let flags = (xlib::CWX | xlib::CWY | xlib::CWWidth | xlib::CWHeight) as u32;
+
+        unsafe {
+            xlib::XConfigureWindow(self.display, self.xwindow, flags, &mut changes);
+        };
+
+        Ok(())
+    }
+}
+
+
+trait Layout {
+    fn layout(&self, width: i32, height: i32, stack: &mut [Win]) -> Result<(), ()>;
+}
+
+
+struct TiledLayout;
+
+impl Layout for TiledLayout {
+    fn layout(&self, width: i32, height: i32, stack: &mut [Win]) -> Result<(), ()> {
+        if stack.len() == 0 {
+            return Ok(());
+        }
+
+        let tile_height = height / stack.len() as i32;
+
+        for (i, window) in stack.iter_mut().enumerate() {
+            window.position(0, i as i32 * tile_height, width, tile_height)?;
+        }
+
+        Ok(())
+    }
+}
+
+
+
 // Error handler used during setup, which simply checks for the BadAccess error
 // which indicates that another WM is already running.
 unsafe extern "C" fn error_handler_init(disp: *mut Display, err: *mut XErrorEvent) -> c_int {
@@ -90,27 +149,6 @@ fn xevent_to_str(event: &xlib::XEvent) -> &str {
     }
 }
 
-unsafe fn layout(disp: *mut Display, attrs: &xlib::XWindowAttributes, stack: &Vec<Window>) {
-    if stack.len() == 0 {
-        return;
-    }
-
-    let height = attrs.height / stack.len() as i32;
-
-    for (i, window) in stack.iter().enumerate() {
-        let i = i as i32;
-        let mut changes: xlib::XWindowChanges = std::mem::zeroed();
-        changes.x = 0;
-        changes.y = i * height;
-        changes.width = attrs.width;
-        changes.height = height;
-        let flags = xlib::CWX | xlib::CWY | xlib::CWWidth | xlib::CWHeight;
-        xlib::XConfigureWindow(disp,
-                               *window,
-                               flags as u32,
-                               &mut changes);
-    }
-}
 
 fn main() {
     env_logger::init().unwrap();
@@ -137,7 +175,9 @@ fn main() {
         xlib::XGetWindowAttributes(disp, root, &mut attrs);
         info!("Root window has geometry: {}x{}", attrs.width, attrs.height);
 
-        let mut stack: Vec<Window> = Vec::new();
+        let mut stack: Vec<Win> = Vec::new();
+
+        let layout = TiledLayout {};
 
         loop {
             info!("Getting event...");
@@ -149,19 +189,23 @@ fn main() {
                 xlib::MapRequest => {
                     let event = xlib::XMapRequestEvent::from(event);
 
-                    stack.push(event.window);
+                    stack.push(Win {
+                                   display: disp,
+                                   xwindow: event.window,
+                               });
 
-                    layout(disp, &attrs, &stack);
+                    layout.layout(attrs.width, attrs.height, stack.as_mut());
 
+                    // TODO: Make this into a method on Win?
                     xlib::XMapWindow(disp, event.window);
                 }
 
                 xlib::DestroyNotify => {
                     let event = xlib::XDestroyWindowEvent::from(event);
 
-                    stack.iter().position(|&w| w == event.window).map(|index| stack.remove(index));
+                    stack.iter().position(|ref w| w.xwindow == event.window).map(|index| stack.remove(index));
 
-                    layout(disp, &attrs, &stack);
+                    layout.layout(attrs.width, attrs.height, stack.as_mut());
                 }
                 _ => {}
             }
