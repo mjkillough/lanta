@@ -120,6 +120,21 @@ fn main() {
             info!("Received event: {}", debug::xevent_to_str(&event));
 
             match event.get_type() {
+                xlib::ConfigureRequest => {
+                    let event = xlib::XConfigureRequestEvent::from(event);
+
+                    let mut changes = xlib::XWindowChanges {
+                        x: event.x,
+                        y: event.y,
+                        width: event.width,
+                        height: event.height,
+                        border_width: event.border_width,
+                        sibling: event.above,
+                        stack_mode: event.detail,
+                    };
+                    xlib::XConfigureWindow(wm.display, event.window, event.value_mask as u32, &mut changes);
+                }
+
                 xlib::MapRequest => {
                     let event = xlib::XMapRequestEvent::from(event);
                     let mut window = Window {
