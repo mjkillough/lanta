@@ -1,11 +1,13 @@
 use std::fmt;
 use std::os::raw::c_uint;
 
+use super::RustWindowManager;
+
 
 pub struct Key {
     pub mod_mask: c_uint,
     pub keysym: c_uint,
-    pub handler: Box<Fn()>,
+    pub handler: Box<Fn(&RustWindowManager)>,
 }
 
 
