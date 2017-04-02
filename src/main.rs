@@ -10,9 +10,6 @@ use std::ptr;
 use std::convert::From;
 
 use x11::xlib;
-use x11::xlib::{BadAccess, Display, XErrorEvent, XOpenDisplay, XDefaultRootWindow,
-                XSetErrorHandler};
-
 
 mod debug;
 mod keys;
@@ -31,7 +28,7 @@ struct Config {
 
 
 pub struct RustWindowManager {
-    display: *mut Display,
+    display: *mut xlib::Display,
     root: xlib::Window,
 
     config: Config,
@@ -62,14 +59,14 @@ impl RustWindowManager {
         unsafe {
             // It's tricky to get state from the error handler to here, so we install a special handler
             // while becoming the WM that panics on error.
-            XSetErrorHandler(Some(debug::error_handler_init));
+            xlib::XSetErrorHandler(Some(debug::error_handler_init));
             xlib::XSelectInput(display,
                             root,
                             xlib::SubstructureNotifyMask | xlib::SubstructureRedirectMask);
             xlib::XSync(display, 0);
 
             // If we get this far, then our error handler didn't panic. Set a more useful error handler.
-            XSetErrorHandler(Some(debug::error_handler));
+            xlib::XSetErrorHandler(Some(debug::error_handler));
         }
 
         Ok(RustWindowManager {
