@@ -4,7 +4,7 @@ extern crate env_logger;
 extern crate libc;
 extern crate x11;
 
-use std::ffi::{ CStr, CString };
+use std::ffi::{CStr, CString};
 use std::os::raw::{c_int, c_char, c_long, c_ulong, c_void};
 use std::ptr;
 use std::convert::From;
@@ -36,7 +36,7 @@ pub struct RustWindowManager {
     stack: Vec<Window>,
     // Focus is an index into the stack. We could do better and use the borrow checker to ensure
     // that it doesn't point at the wrong data when an item is added/removed from the stack.
-    focus: Option<usize>
+    focus: Option<usize>,
 }
 
 impl RustWindowManager {
@@ -57,27 +57,28 @@ impl RustWindowManager {
 
         // Install ourselves as the WM.
         unsafe {
-            // It's tricky to get state from the error handler to here, so we install a special handler
-            // while becoming the WM that panics on error.
+            // It's tricky to get state from the error handler to here, so we install a special
+            // handler while becoming the WM that panics on error.
             xlib::XSetErrorHandler(Some(debug::error_handler_init));
             xlib::XSelectInput(display,
-                            root,
-                            xlib::SubstructureNotifyMask | xlib::SubstructureRedirectMask);
+                               root,
+                               xlib::SubstructureNotifyMask | xlib::SubstructureRedirectMask);
             xlib::XSync(display, 0);
 
-            // If we get this far, then our error handler didn't panic. Set a more useful error handler.
+            // If we get this far, then our error handler didn't panic. Set a more useful error
+            // handler.
             xlib::XSetErrorHandler(Some(debug::error_handler));
         }
 
         Ok(RustWindowManager {
-            display: display,
-            root: root,
+               display: display,
+               root: root,
 
-            config: config,
+               config: config,
 
-            stack: Vec::new(),
-            focus: None,
-        })
+               stack: Vec::new(),
+               focus: None,
+           })
     }
 
     fn layout(&mut self) -> Result<(), String> {
@@ -116,9 +117,7 @@ fn get_wm_protocols(window: &Window) -> Vec<String> {
     let protocols: Vec<String> = unsafe {
         xlib::XGetAtomNames(window.display, atoms, count, pointers.as_mut_ptr());
         pointers.set_len(count as usize);
-        pointers.iter()
-            .map(|buffer| CStr::from_ptr(*buffer).to_str().unwrap().to_owned())
-            .collect()
+        pointers.iter().map(|buffer| CStr::from_ptr(*buffer).to_str().unwrap().to_owned()).collect()
     };
 
     unsafe {
@@ -136,9 +135,7 @@ fn intern_atom(display: *mut xlib::Display, s: &str) -> xlib::Atom {
     // Note: it is important that the CString is bound to a variable to ensure adequate lifetime.
     let cstring = CString::new(s).unwrap();
     let ptr = cstring.as_ptr() as *const c_char;
-    unsafe {
-        xlib::XInternAtom(display, ptr, 0)
-    }
+    unsafe { xlib::XInternAtom(display, ptr, 0) }
 }
 
 
@@ -188,7 +185,10 @@ fn main() {
                         handler: Box::new(close_window),
                     }];
     let layout = Box::new(TiledLayout {});
-    let config = Config { keys: keys, layout: layout };
+    let config = Config {
+        keys: keys,
+        layout: layout,
+    };
 
     let mut wm = RustWindowManager::new(config).unwrap();
 
@@ -212,7 +212,10 @@ fn main() {
                         sibling: event.above,
                         stack_mode: event.detail,
                     };
-                    xlib::XConfigureWindow(wm.display, event.window, event.value_mask as u32, &mut changes);
+                    xlib::XConfigureWindow(wm.display,
+                                           event.window,
+                                           event.value_mask as u32,
+                                           &mut changes);
                 }
 
                 xlib::MapRequest => {
@@ -237,7 +240,10 @@ fn main() {
                 xlib::DestroyNotify => {
                     let event = xlib::XDestroyWindowEvent::from(event);
 
-                    wm.stack.iter().position(|ref w| w.xwindow == event.window).map(|index| wm.stack.remove(index));
+                    wm.stack
+                        .iter()
+                        .position(|ref w| w.xwindow == event.window)
+                        .map(|index| wm.stack.remove(index));
 
                     wm.layout();
                 }

@@ -6,7 +6,9 @@ use x11::xlib;
 
 // Error handler used during setup, which simply checks for the BadAccess error
 // which indicates that another WM is already running.
-pub unsafe extern "C" fn error_handler_init(display: *mut xlib::Display, err: *mut xlib::XErrorEvent) -> c_int {
+pub unsafe extern "C" fn error_handler_init(display: *mut xlib::Display,
+                                            err: *mut xlib::XErrorEvent)
+                                            -> c_int {
     if (*err).error_code == xlib::BadAccess {
         panic!("Another WM is already running");
     }
@@ -15,7 +17,9 @@ pub unsafe extern "C" fn error_handler_init(display: *mut xlib::Display, err: *m
 
 
 // Actual error handler used during normal operation.
-pub unsafe extern "C" fn error_handler(display: *mut xlib::Display, err: *mut xlib::XErrorEvent) -> c_int {
+pub unsafe extern "C" fn error_handler(display: *mut xlib::Display,
+                                       err: *mut xlib::XErrorEvent)
+                                       -> c_int {
     let buffer_size: usize = 1024;
     let mut buffer = Vec::<u8>::with_capacity(buffer_size);
     // XXX the docs say this returns the error text in the 'current locale'. We're
