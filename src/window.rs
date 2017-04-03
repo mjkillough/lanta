@@ -1,53 +1,28 @@
-use x11::xlib;
+use std::rc::Rc;
 
-use keys::Key;
+use x::{Connection, WindowId};
 
 
-#[derive(Debug)]
 pub struct Window {
-    // TODO: Consider making these private.
-    pub display: *mut xlib::Display,
-    pub xwindow: xlib::Window,
+    connection: Rc<Connection>,
+    pub id: WindowId,
 }
 
-
 impl Window {
-    // Does this really need to be &mut self? It feels light it ought to be as it is actually
-    // modifying the underlying window, even if we're not actually modifying the value as far as
-    // Rust is concerned.
-    pub fn position(&mut self, x: i32, y: i32, width: i32, height: i32) -> Result<(), String> {
-        let mut changes = xlib::XWindowChanges {
-            x: x,
-            y: y,
-            width: width,
-            height: height,
-
-            // Ignored:
-            border_width: 0,
-            sibling: 0,
-            stack_mode: 0,
-        };
-        let flags = (xlib::CWX | xlib::CWY | xlib::CWWidth | xlib::CWHeight) as u32;
-
-        unsafe {
-            xlib::XConfigureWindow(self.display, self.xwindow, flags, &mut changes);
-        };
-
-        Ok(())
+    pub fn new(connection: Rc<Connection>, id: WindowId) -> Window {
+        Window {
+            connection: connection,
+            id: id,
+        }
     }
 
-    pub fn grab_keys(&mut self, keys: &[Key]) {
-        for key in keys.iter() {
-            unsafe {
-                let keycode = xlib::XKeysymToKeycode(self.display, key.keysym as u64) as i32;
-                xlib::XGrabKey(self.display,
-                               keycode,
-                               key.mod_mask,
-                               self.xwindow,
-                               0,
-                               xlib::GrabModeAsync,
-                               xlib::GrabModeAsync);
-            }
-        }
+    /// Sets the window's position and size.
+    pub fn configure(&self, x: i32, y: i32, width: i32, height: i32) {
+        self.connection.configure_window(self.id, x, y, width, height);
+    }
+
+    /// Closes the window.
+    pub fn close(&self) {
+        self.connection.close_window(self.id);
     }
 }
