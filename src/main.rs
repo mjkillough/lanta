@@ -86,6 +86,9 @@ impl RustWindowManager {
     }
 
     fn on_map_request(&mut self, window_id: WindowId) {
+        self.connection.register_window_events(window_id);
+        self.connection.map_window(window_id);
+
         self.stack.push(Window::new(self.connection.clone(), window_id));
         self.layout();
     }

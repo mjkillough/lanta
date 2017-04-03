@@ -295,21 +295,15 @@ impl<'a> EventLoop<'a> {
                                    &mut changes);
         }
 
+        // There's no value in propogating this event.
         None
     }
 
     fn on_map_request(&self, event: xlib::XMapRequestEvent) -> Option<Event> {
-        let window = event.window;
-
-        self.connection.register_window_events(window);
-        self.connection.map_window(window);
-
-        Some(Event::MapRequest(window))
+        Some(Event::MapRequest(event.window))
     }
 
     fn on_destroy_notify(&self, event: xlib::XDestroyWindowEvent) -> Option<Event> {
-        // We don't need to do anything for this here, but others may need this information
-        // to track currently open windows, etc.
         Some(Event::DestroyNotify(event.window))
     }
 
@@ -331,6 +325,7 @@ impl<'a> EventLoop<'a> {
                event.state,
                event.keycode);
 
+        // Don't bother raising key events if our owner hasn't expressed an interest in them.
         None
     }
 
