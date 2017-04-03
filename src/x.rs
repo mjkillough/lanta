@@ -13,14 +13,6 @@ use keys::Key;
 pub type WindowId = xlib::Window;
 
 
-pub enum Event {
-    MapRequest(WindowId),
-    DestroyNotify(WindowId),
-    KeyPress(Key),
-    EnterNotify(WindowId),
-}
-
-
 struct InternedAtoms {
     WM_DELETE_WINDOW: xlib::Atom,
     WM_PROTOCOLS: xlib::Atom,
@@ -233,6 +225,18 @@ impl Connection {
 }
 
 
+/// Events received from the `EventLoop`.
+pub enum Event {
+    MapRequest(WindowId),
+    DestroyNotify(WindowId),
+    KeyPress(Key),
+    EnterNotify(WindowId),
+}
+
+
+/// An iterator that yields events from the X event loop.
+///
+/// Use `Connection::get_event_loop()` to get one.
 pub struct EventLoop<'a> {
     connection: &'a Connection,
 }
