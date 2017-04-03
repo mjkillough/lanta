@@ -91,7 +91,7 @@ impl RustWindowManager {
     }
 
     fn on_destroy_notify(&mut self, window_id: WindowId) {
-        self.group.find_window_by_id(window_id).map(|w| w.remove_from_group());
+        self.group.find_window_by_id(&window_id).map(|w| w.remove_from_group());
         self.layout();
     }
 
@@ -103,7 +103,7 @@ impl RustWindowManager {
     }
 
     fn on_enter_notify(&mut self, window_id: WindowId) {
-        self.group.find_window_by_id(window_id).map(|mut w| w.focus());
+        self.group.find_window_by_id(&window_id).map(|mut w| w.focus());
     }
 }
 

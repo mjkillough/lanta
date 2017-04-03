@@ -1,4 +1,4 @@
-use std::rc::Rc;
+use std::rc::{Rc, Weak};
 use std::slice::IterMut;
 
 use window::Window;
@@ -7,8 +7,8 @@ use x::{Connection, WindowId};
 
 pub struct Group {
     connection: Rc<Connection>,
-    stack: Vec<WindowId>,
-    focus: Option<usize>,
+    stack: Vec<Rc<WindowId>>,
+    focus: Option<Weak<WindowId>>,
 }
 
 impl Group {
@@ -21,28 +21,32 @@ impl Group {
     }
 
     pub fn add_window(&mut self, window_id: WindowId) {
-        self.stack.push(window_id);
+        self.stack.push(Rc::new(window_id));
     }
 
-    pub fn find_window_by_id<'a>(&'a mut self, window_id: WindowId) -> Option<GroupWindow<'a>> {
+    pub fn find_window_by_id<'a>(&'a mut self, window_id: &WindowId) -> Option<GroupWindow<'a>> {
         self.stack
             .iter()
-            .position(|w| *w == window_id)
-            .map(move |idx| {
+            .find(|rc| rc.as_ref() == window_id)
+            .map(|rc| rc.clone())
+            .map(move |rc| {
                      GroupWindow {
                          group: self,
-                         idx: idx,
+                         window_id: rc,
                      }
                  })
     }
 
     pub fn get_focused<'a>(&'a mut self) -> Option<GroupWindow<'a>> {
-        self.focus.map(move |idx| {
-                           GroupWindow {
-                               group: self,
-                               idx: idx,
-                           }
-                       })
+        self.focus
+            .clone()
+            .and_then(|rc| rc.upgrade())
+            .map(move |window_id| {
+                     GroupWindow {
+                         group: self,
+                         window_id: window_id,
+                     }
+                 })
     }
 
     pub fn iter_mut<'a>(&'a mut self) -> GroupIter<'a> {
@@ -56,16 +60,17 @@ impl Group {
 
 pub struct GroupWindow<'a> {
     group: &'a mut Group,
-    idx: usize,
+    window_id: Rc<WindowId>,
 }
 
 impl<'a> GroupWindow<'a> {
     pub fn remove_from_group(self) {
-        self.group.stack.remove(self.idx);
+        let window_id = self.window_id.clone();
+        self.group.stack.retain(|w| w != &window_id)
     }
 
     pub fn focus(&mut self) {
-        self.group.focus = Some(self.idx);
+        self.group.focus = Some(Rc::downgrade(&self.window_id));
     }
 }
 
@@ -75,14 +80,14 @@ impl<'a> Window for GroupWindow<'a> {
     }
 
     fn id(&self) -> &WindowId {
-        &self.group.stack[self.idx]
+        self.window_id.as_ref()
     }
 }
 
 
 pub struct GroupIter<'a> {
     connection: &'a Connection,
-    inner: IterMut<'a, WindowId>,
+    inner: IterMut<'a, Rc<WindowId>>,
 }
 
 impl<'a> Iterator for GroupIter<'a> {
