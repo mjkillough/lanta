@@ -1,12 +1,12 @@
 use std;
 use std::ffi;
-use std::os::raw::{c_int, c_char, c_long, c_ulong, c_void};
+use std::os::raw::{c_int, c_char, c_long, c_uchar, c_uint, c_ulong, c_void};
 use std::ptr;
 
 use x11::xlib;
 
 use debug;
-use keys::Key;
+use keys::{KeyHandlers, KeyCombo, ModKey};
 
 
 /// A handle to an X Window.
@@ -29,15 +29,13 @@ pub struct Connection {
     display: *mut xlib::Display,
     root: WindowId,
     atoms: InternedAtoms,
-
-    keys: Vec<Key>,
 }
 
 // TODO: Implement Drop so that we can call XCloseDisplay?
 
 impl Connection {
     /// Opens a connection to the X server, returning a new Connection object.
-    pub fn connect(keys: Vec<Key>) -> Result<Connection, String> {
+    pub fn connect() -> Result<Connection, String> {
         let (display, root) = unsafe {
             let display: *mut xlib::Display = xlib::XOpenDisplay(ptr::null_mut());
             let root: xlib::Window = xlib::XDefaultRootWindow(display);
@@ -58,8 +56,6 @@ impl Connection {
                    WM_PROTOCOLS: Self::intern_atom(display, "WM_PROTOCOLS"),
                    WM_DELETE_WINDOW: Self::intern_atom(display, "WM_DELETE_WINDOW"),
                },
-
-               keys: keys,
            })
     }
 
@@ -166,7 +162,11 @@ impl Connection {
         client_message.data.set_long(1, xlib::CurrentTime as c_long);
         let mut event = xlib::XEvent::from(client_message);
         unsafe {
-            xlib::XSendEvent(self.display, window_id.to_x(), 0, xlib::NoEventMask, &mut event);
+            xlib::XSendEvent(self.display,
+                             window_id.to_x(),
+                             0,
+                             xlib::NoEventMask,
+                             &mut event);
         }
     }
 
@@ -208,12 +208,12 @@ impl Connection {
     }
 
     /// Registers for interesting events on the window.
-    pub fn register_window_events(&self, window_id: WindowId) {
+    pub fn register_window_events(&self, window_id: WindowId, key_handlers: &KeyHandlers) {
         unsafe {
             // Necessary in order to track which window is currently focused.
             xlib::XSelectInput(self.display, window_id.to_x(), xlib::EnterWindowMask);
 
-            for key in self.keys.iter() {
+            for key in key_handlers.key_combos() {
                 let keycode = xlib::XKeysymToKeycode(self.display, key.keysym as u64) as i32;
                 xlib::XGrabKey(self.display,
                                keycode,
@@ -236,7 +236,7 @@ impl Connection {
 pub enum Event {
     MapRequest(WindowId),
     DestroyNotify(WindowId),
-    KeyPress(Key),
+    KeyPress(KeyCombo),
     EnterNotify(WindowId),
 }
 
@@ -315,25 +315,23 @@ impl<'a> EventLoop<'a> {
     }
 
     fn on_key_press(&self, event: xlib::XKeyPressedEvent) -> Option<Event> {
-        // TODO: Rewrite to use keys.contains()?
-        for key in self.connection.keys.iter() {
-            let keycode = unsafe {
-                xlib::XKeysymToKeycode(self.connection.display, key.keysym as u64) as u32
-            };
+        let shift_index = if event.state & xlib::ShiftMask != 0 {
+            1
+        } else {
+            0
+        };
+        let mod_mask = event.state & ModKey::mask_all();
+        let keysym = unsafe {
+            xlib::XKeycodeToKeysym(self.connection.display,
+                                   event.keycode as c_uchar,
+                                   shift_index)
+        } as c_uint;
+        let key = KeyCombo {
+            mod_mask: mod_mask,
+            keysym: keysym,
+        };
 
-            // TODO: Allow extra mod keys to be pressed at the same time. (Add test!)
-            if (event.state & key.mod_mask != 0) && event.keycode == keycode {
-                info!("KeyPress matches key: {:?}", key);
-                return Some(Event::KeyPress(*key));
-            }
-        }
-
-        debug!("KeyPress didn't match a key: state={}, keycode={}",
-               event.state,
-               event.keycode);
-
-        // Don't bother raising key events if our owner hasn't expressed an interest in them.
-        None
+        Some(Event::KeyPress(key))
     }
 
     fn on_enter_notify(&self, event: xlib::XEnterWindowEvent) -> Option<Event> {

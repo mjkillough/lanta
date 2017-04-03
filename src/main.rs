@@ -20,13 +20,13 @@ mod x;
 
 use window::Window;
 use layout::{Layout, TiledLayout};
-use keys::{Key, KeyHandler};
+use keys::{KeyCombo, KeyHandler, KeyHandlers, ModKey};
 use x::{Connection, Event, WindowId};
 
 
 struct Config {
-    keys: Vec<KeyHandler>,
     layout: Box<Layout>,
+    keys: KeyHandlers,
 }
 
 
@@ -43,11 +43,7 @@ pub struct RustWindowManager {
 
 impl RustWindowManager {
     fn new(config: Config) -> Result<Self, String> {
-        let keys: Vec<Key> = config.keys
-            .iter()
-            .map(|kh| kh.key.clone())
-            .collect();
-        let connection = Connection::connect(keys)?;
+        let connection = Connection::connect()?;
         connection.install_as_wm()?;
 
         Ok(RustWindowManager {
@@ -86,7 +82,7 @@ impl RustWindowManager {
     }
 
     fn on_map_request(&mut self, window_id: WindowId) {
-        self.connection.register_window_events(window_id);
+        self.connection.register_window_events(window_id, &self.config.keys);
         self.connection.map_window(window_id);
 
         self.stack.push(Window::new(self.connection.clone(), window_id));
@@ -101,12 +97,8 @@ impl RustWindowManager {
         self.layout();
     }
 
-    fn on_key_press(&self, key: Key) {
-        self.config
-            .keys
-            .iter()
-            .find(|kh| kh.key == key)
-            .map(|kh| (kh.handler)(&self));
+    fn on_key_press(&self, key: KeyCombo) {
+        self.config.keys.dispatch(&key, &self);
     }
 
     fn on_enter_notify(&mut self, window_id: WindowId) {
@@ -123,13 +115,9 @@ fn close_window(wm: &RustWindowManager) {
 fn main() {
     env_logger::init().unwrap();
 
-    let keys = vec![KeyHandler {
-                        key: Key {
-                            mod_mask: xlib::Mod4Mask,
-                            keysym: x11::keysym::XK_T,
-                        },
-                        handler: Box::new(close_window),
-                    }];
+    let keys = KeyHandlers::new(vec![(KeyCombo::new(vec![ModKey::Mod4], x11::keysym::XK_t),
+                                      Box::new(close_window))]);
+
     let layout = Box::new(TiledLayout {});
     let config = Config {
         keys: keys,
