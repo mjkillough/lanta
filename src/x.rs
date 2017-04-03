@@ -9,8 +9,15 @@ use debug;
 use keys::Key;
 
 
-// TODO: Make these opaque so that other modules can't instantiate them.
-pub type WindowId = xlib::Window;
+/// A handle to an X Window.
+#[derive(Copy, Clone, Debug, PartialEq)]
+pub struct WindowId(xlib::Window);
+
+impl WindowId {
+    fn to_x(&self) -> xlib::Window {
+        self.0
+    }
+}
 
 
 struct InternedAtoms {
@@ -46,7 +53,7 @@ impl Connection {
 
         Ok(Connection {
                display: display,
-               root: root,
+               root: WindowId(root),
                atoms: InternedAtoms {
                    WM_PROTOCOLS: Self::intern_atom(display, "WM_PROTOCOLS"),
                    WM_DELETE_WINDOW: Self::intern_atom(display, "WM_DELETE_WINDOW"),
@@ -73,7 +80,7 @@ impl Connection {
             // handler while becoming the WM that panics on error.
             xlib::XSetErrorHandler(Some(debug::error_handler_init));
             xlib::XSelectInput(self.display,
-                               self.root,
+                               self.root.to_x(),
                                xlib::SubstructureNotifyMask | xlib::SubstructureRedirectMask);
             xlib::XSync(self.display, 0);
 
@@ -98,7 +105,7 @@ impl Connection {
         let mut atoms: *mut c_ulong = ptr::null_mut();
         let mut count: c_int = 0;
         unsafe {
-            xlib::XGetWMProtocols(self.display, window_id, &mut atoms, &mut count);
+            xlib::XGetWMProtocols(self.display, window_id.to_x(), &mut atoms, &mut count);
         }
 
         if atoms.is_null() {
@@ -150,7 +157,7 @@ impl Connection {
             serial: 0,
             send_event: 0,
             display: ptr::null_mut(),
-            window: window_id,
+            window: window_id.to_x(),
             message_type: self.atoms.WM_PROTOCOLS,
             format: 32,
             data: xlib::ClientMessageData::new(),
@@ -159,7 +166,7 @@ impl Connection {
         client_message.data.set_long(1, xlib::CurrentTime as c_long);
         let mut event = xlib::XEvent::from(client_message);
         unsafe {
-            xlib::XSendEvent(self.display, window_id, 0, xlib::NoEventMask, &mut event);
+            xlib::XSendEvent(self.display, window_id.to_x(), 0, xlib::NoEventMask, &mut event);
         }
     }
 
@@ -179,7 +186,7 @@ impl Connection {
         let flags = xlib::CWX | xlib::CWY | xlib::CWWidth | xlib::CWHeight;
 
         unsafe {
-            xlib::XConfigureWindow(self.display, window_id, flags as u32, &mut changes);
+            xlib::XConfigureWindow(self.display, window_id.to_x(), flags as u32, &mut changes);
         };
     }
 
@@ -187,7 +194,7 @@ impl Connection {
     pub fn get_window_geometry(&self, window_id: WindowId) -> (i32, i32) {
         unsafe {
             let mut attrs: xlib::XWindowAttributes = std::mem::zeroed();
-            xlib::XGetWindowAttributes(self.display, self.root, &mut attrs);
+            xlib::XGetWindowAttributes(self.display, self.root.to_x(), &mut attrs);
 
             (attrs.width, attrs.height)
         }
@@ -196,7 +203,7 @@ impl Connection {
     /// Map a window.
     pub fn map_window(&self, window_id: WindowId) {
         unsafe {
-            xlib::XMapWindow(self.display, window_id);
+            xlib::XMapWindow(self.display, window_id.to_x());
         }
     }
 
@@ -204,14 +211,14 @@ impl Connection {
     pub fn register_window_events(&self, window_id: WindowId) {
         unsafe {
             // Necessary in order to track which window is currently focused.
-            xlib::XSelectInput(self.display, window_id, xlib::EnterWindowMask);
+            xlib::XSelectInput(self.display, window_id.to_x(), xlib::EnterWindowMask);
 
             for key in self.keys.iter() {
                 let keycode = xlib::XKeysymToKeycode(self.display, key.keysym as u64) as i32;
                 xlib::XGrabKey(self.display,
                                keycode,
                                key.mod_mask,
-                               window_id,
+                               window_id.to_x(),
                                0,
                                xlib::GrabModeAsync,
                                xlib::GrabModeAsync);
@@ -300,11 +307,11 @@ impl<'a> EventLoop<'a> {
     }
 
     fn on_map_request(&self, event: xlib::XMapRequestEvent) -> Option<Event> {
-        Some(Event::MapRequest(event.window))
+        Some(Event::MapRequest(WindowId(event.window)))
     }
 
     fn on_destroy_notify(&self, event: xlib::XDestroyWindowEvent) -> Option<Event> {
-        Some(Event::DestroyNotify(event.window))
+        Some(Event::DestroyNotify(WindowId(event.window)))
     }
 
     fn on_key_press(&self, event: xlib::XKeyPressedEvent) -> Option<Event> {
@@ -330,6 +337,6 @@ impl<'a> EventLoop<'a> {
     }
 
     fn on_enter_notify(&self, event: xlib::XEnterWindowEvent) -> Option<Event> {
-        Some(Event::EnterNotify(event.window))
+        Some(Event::EnterNotify(WindowId(event.window)))
     }
 }
