@@ -8,7 +8,8 @@ use std::ffi::{CStr, CString};
 use std::os::raw::{c_int, c_char, c_long, c_ulong, c_void};
 use std::ptr;
 use std::convert::From;
-use std::rc::Rc;
+use std::rc::{Rc, Weak};
+use std::slice::IterMut;
 
 use x11::xlib;
 
@@ -24,6 +25,55 @@ use keys::{KeyCombo, KeyHandler, KeyHandlers, ModKey};
 use x::{Connection, Event, WindowId};
 
 
+struct Group {
+    stack: Vec<Rc<Window>>,
+    focus: Option<Weak<Window>>,
+}
+
+impl Group {
+    fn new() -> Group {
+        Group {
+            stack: Vec::new(),
+            focus: None,
+        }
+    }
+
+    fn add_window(&mut self, window: Window) {
+        self.stack.push(Rc::new(window));
+    }
+
+    fn find_window_by_id(&self, window_id: WindowId) -> Option<Rc<Window>> {
+        self.stack
+            .iter()
+            .find(|w| w.id == window_id)
+            .map(|rc| rc.clone())
+    }
+
+    fn remove_window(&mut self, window: &Window) {
+        self.stack
+            .iter()
+            .position(|w| w.id == window.id)
+            .map(|i| self.stack.remove(i));
+    }
+
+    fn focus(&mut self, window: Rc<Window>) {
+        self.focus = Some(Rc::downgrade(&window));
+    }
+
+    fn unfocus(&mut self) {
+        self.focus = None;
+    }
+
+    fn get_focused(&self) -> Option<Rc<Window>> {
+        self.focus.clone().and_then(|rc| rc.upgrade())
+    }
+
+    fn iter_mut(&mut self) -> IterMut<Rc<Window>> {
+        self.stack.iter_mut()
+    }
+}
+
+
 struct Config {
     layout: Box<Layout>,
     keys: KeyHandlers,
@@ -35,10 +85,7 @@ pub struct RustWindowManager {
 
     config: Config,
 
-    stack: Vec<Window>,
-    // Focus is an index into the stack. We could do better and use the borrow checker to ensure
-    // that it doesn't point at the wrong data when an item is added/removed from the stack.
-    focus: Option<usize>,
+    group: Group,
 }
 
 impl RustWindowManager {
@@ -51,8 +98,7 @@ impl RustWindowManager {
 
                config: config,
 
-               stack: Vec::new(),
-               focus: None,
+               group: Group::new(),
            })
     }
 
@@ -60,11 +106,11 @@ impl RustWindowManager {
         let root_window_id = self.connection.root_window_id();
         let (width, height) = self.connection.get_window_geometry(root_window_id);
 
-        self.config.layout.layout(width, height, &mut self.stack);
+        self.config.layout.layout(width, height, self.group.iter_mut());
     }
 
-    fn get_focused(&self) -> Option<&Window> {
-        self.focus.map(|i| &self.stack[i])
+    fn get_focused(&self) -> Option<Rc<Window>> {
+        self.group.get_focused()
     }
 
     fn run_event_loop(&mut self) {
@@ -85,15 +131,14 @@ impl RustWindowManager {
         self.connection.register_window_events(window_id, &self.config.keys);
         self.connection.map_window(window_id);
 
-        self.stack.push(Window::new(self.connection.clone(), window_id));
+        let window = Window::new(self.connection.clone(), window_id);
+        self.group.add_window(window);
         self.layout();
     }
 
     fn on_destroy_notify(&mut self, window_id: WindowId) {
-        self.stack
-            .iter()
-            .position(|ref w| w.id == window_id)
-            .map(|index| self.stack.remove(index));
+        self.group.find_window_by_id(window_id)
+            .map(|w| self.group.remove_window(&w));
         self.layout();
     }
 
@@ -102,7 +147,8 @@ impl RustWindowManager {
     }
 
     fn on_enter_notify(&mut self, window_id: WindowId) {
-        self.focus = self.stack.iter().position(|ref w| w.id == window_id);
+        self.group.find_window_by_id(window_id)
+            .map(|w| self.group.focus(w));
     }
 }
 
