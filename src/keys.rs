@@ -1,3 +1,4 @@
+use std::rc::Rc;
 use std::collections::HashMap;
 use std::fmt;
 use std::os::raw::c_uint;
@@ -58,7 +59,10 @@ impl KeyCombo {
 }
 
 
-pub type KeyHandler = Box<Fn(&RustWindowManager)>;
+// XXX We need to use Rc in order to allow us to borrow RustWindowManager mutably to pass it to
+// handlers. However, using a Rc for an event handler sounds like a terrible idea - could it cause
+// UAF?
+pub type KeyHandler = Rc<Fn(&mut RustWindowManager)>;
 
 
 /// A collection of `KeyHandler`.
@@ -84,11 +88,11 @@ impl KeyHandlers {
         self.handlers.keys().collect()
     }
 
-    pub fn get(&self, key_combo: &KeyCombo) -> Option<&KeyHandler> {
-        self.handlers.get(key_combo)
+    pub fn get(&self, key_combo: &KeyCombo) -> Option<KeyHandler> {
+        self.handlers.get(key_combo).map(|rc| rc.clone())
     }
 
-    pub fn dispatch(&self, key_combo: &KeyCombo, wm: &RustWindowManager) {
+    pub fn dispatch(&self, key_combo: &KeyCombo, wm: &mut RustWindowManager) {
         self.get(key_combo).map(|handler| (handler)(wm));
     }
 }

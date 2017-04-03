@@ -10,7 +10,7 @@ use keys::{KeyHandlers, KeyCombo, ModKey};
 
 
 /// A handle to an X Window.
-#[derive(Copy, Clone, Debug, PartialEq)]
+#[derive(Debug, PartialEq)]
 pub struct WindowId(xlib::Window);
 
 impl WindowId {
@@ -89,15 +89,15 @@ impl Connection {
     }
 
     /// Returns the ID of the root window.
-    pub fn root_window_id(&self) -> WindowId {
-        self.root
+    pub fn root_window_id(&self) -> &WindowId {
+        &self.root
     }
 
     /// Queries the WM_PROTOCOLS property of a window, returning a list of the protocols that it
     /// supports.
     // TODO: Have this return a list of atoms, rather than a list of strings. (Perhaps we should
     // have a separate function to convert to a list of strings for debugging?)
-    pub fn get_wm_protocols(&self, window_id: WindowId) -> Vec<String> {
+    pub fn get_wm_protocols(&self, window_id: &WindowId) -> Vec<String> {
         let mut atoms: *mut c_ulong = ptr::null_mut();
         let mut count: c_int = 0;
         unsafe {
@@ -138,7 +138,7 @@ impl Connection {
     ///
     /// The window will be closed gracefully using the ICCCM WM_DELETE_WINDOW protocol if it is
     /// supported.
-    pub fn close_window(&self, window_id: WindowId) {
+    pub fn close_window(&self, window_id: &WindowId) {
         let protocols = self.get_wm_protocols(window_id);
         let has_wm_delete_window = protocols.contains(&"WM_DELETE_WINDOW".to_owned());
 
@@ -171,7 +171,7 @@ impl Connection {
     }
 
     /// Sets the window's position and size.
-    pub fn configure_window(&self, window_id: WindowId, x: i32, y: i32, width: i32, height: i32) {
+    pub fn configure_window(&self, window_id: &WindowId, x: i32, y: i32, width: i32, height: i32) {
         let mut changes = xlib::XWindowChanges {
             x: x,
             y: y,
@@ -191,7 +191,7 @@ impl Connection {
     }
 
     /// Get's the window's width and height.
-    pub fn get_window_geometry(&self, window_id: WindowId) -> (i32, i32) {
+    pub fn get_window_geometry(&self, window_id: &WindowId) -> (i32, i32) {
         unsafe {
             let mut attrs: xlib::XWindowAttributes = std::mem::zeroed();
             xlib::XGetWindowAttributes(self.display, self.root.to_x(), &mut attrs);
@@ -201,14 +201,14 @@ impl Connection {
     }
 
     /// Map a window.
-    pub fn map_window(&self, window_id: WindowId) {
+    pub fn map_window(&self, window_id: &WindowId) {
         unsafe {
             xlib::XMapWindow(self.display, window_id.to_x());
         }
     }
 
     /// Registers for interesting events on the window.
-    pub fn register_window_events(&self, window_id: WindowId, key_handlers: &KeyHandlers) {
+    pub fn register_window_events(&self, window_id: &WindowId, key_handlers: &KeyHandlers) {
         unsafe {
             // Necessary in order to track which window is currently focused.
             xlib::XSelectInput(self.display, window_id.to_x(), xlib::EnterWindowMask);

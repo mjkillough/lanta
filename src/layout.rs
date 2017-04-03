@@ -1,18 +1,19 @@
 use std::rc::Rc;
 use std::slice::IterMut;
 
+use groups::GroupIter;
 use window::Window;
 
 
 pub trait Layout {
-    fn layout(&self, width: i32, height: i32, stack: IterMut<Rc<Window>>);
+    fn layout(&self, width: i32, height: i32, stack: GroupIter);
 }
 
 
 pub struct TiledLayout;
 
 impl Layout for TiledLayout {
-    fn layout(&self, width: i32, height: i32, stack: IterMut<Rc<Window>>) {
+    fn layout(&self, width: i32, height: i32, stack: GroupIter) {
         if stack.len() == 0 {
             return;
         }
