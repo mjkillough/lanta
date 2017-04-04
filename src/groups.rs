@@ -55,6 +55,53 @@ impl Group {
             inner: self.stack.iter_mut(),
         }
     }
+
+    fn update_focus(&self) {
+        self.focus
+            .clone()
+            .and_then(|rc| rc.upgrade())
+            .map(|window_id| self.connection.focus_window(&window_id));
+    }
+
+    pub fn focus_next(&mut self) {
+        self.focus = self.focus
+            .clone()
+            .and_then(|rc| rc.upgrade())
+            .and_then(|current| self.stack.iter().position(|rc| rc == &current))
+            .map(|current_idx| {
+                     let next_idx = (current_idx + 1) % self.stack.len();
+                     self.stack[next_idx].clone()
+                 })
+            .or_else(|| if self.stack.is_empty() {
+                         None
+                     } else {
+                         Some(self.stack[0].clone())
+                     })
+            .map(|rc| Rc::downgrade(&rc));
+        self.update_focus();
+    }
+
+    pub fn focus_previous(&mut self) {
+        self.focus = self.focus
+            .clone()
+            .and_then(|rc| rc.upgrade())
+            .and_then(|current| self.stack.iter().position(|rc| rc == &current))
+            .map(|current_idx| {
+                let next_idx = if current_idx == 0 {
+                    self.stack.len() - 1
+                } else {
+                    (current_idx - 1) % self.stack.len()
+                };
+                self.stack[next_idx].clone()
+            })
+            .or_else(|| if self.stack.is_empty() {
+                         None
+                     } else {
+                         Some(self.stack[0].clone())
+                     })
+            .map(|rc| Rc::downgrade(&rc));
+        self.update_focus();
+    }
 }
 
 
@@ -71,6 +118,7 @@ impl<'a> GroupWindow<'a> {
 
     pub fn focus(&mut self) {
         self.group.focus = Some(Rc::downgrade(&self.window_id));
+        self.group.update_focus();
     }
 }
 

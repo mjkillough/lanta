@@ -68,6 +68,14 @@ impl RustWindowManager {
         self.group.get_focused()
     }
 
+    fn focus_next(&mut self) {
+        self.group.focus_next();
+    }
+
+    fn focus_previous(&mut self) {
+        self.group.focus_previous();
+    }
+
     fn run_event_loop(&mut self) {
         let event_loop_connection = self.connection.clone();
         let mut event_loop = event_loop_connection.get_event_loop();
@@ -112,12 +120,23 @@ fn close_window(wm: &mut RustWindowManager) {
     wm.get_focused().map(|w| w.close());
 }
 
+fn focus_next(wm: &mut RustWindowManager) {
+    wm.focus_next();
+}
+
+fn focus_previous(wm: &mut RustWindowManager) {
+    wm.focus_previous();
+}
 
 fn main() {
     env_logger::init().unwrap();
 
     let keys = KeyHandlers::new(vec![(KeyCombo::new(vec![ModKey::Mod4], x11::keysym::XK_t),
-                                      Rc::new(close_window))]);
+                                      Rc::new(close_window)),
+                                     (KeyCombo::new(vec![ModKey::Mod4], x11::keysym::XK_y),
+                                      Rc::new(focus_next)),
+                                     (KeyCombo::new(vec![ModKey::Mod4], x11::keysym::XK_u),
+                                      Rc::new(focus_previous))]);
 
     let layout = Box::new(TiledLayout {});
     let config = Config {

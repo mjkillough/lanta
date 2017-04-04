@@ -226,6 +226,16 @@ impl Connection {
         }
     }
 
+    pub fn focus_window(&self, window_id: &WindowId) {
+        unsafe {
+            xlib::XSetInputFocus(self.display,
+                                 window_id.to_x(),
+                                 xlib::RevertToPointerRoot,
+                                 xlib::CurrentTime);
+            // TODO: _NET_ACTIVE_WINDOW
+        }
+    }
+
     pub fn get_event_loop(&self) -> EventLoop {
         EventLoop { connection: &self }
     }
