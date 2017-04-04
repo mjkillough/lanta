@@ -195,7 +195,7 @@ impl Connection {
     pub fn get_window_geometry(&self, window_id: &WindowId) -> (i32, i32) {
         unsafe {
             let mut attrs: xlib::XWindowAttributes = std::mem::zeroed();
-            xlib::XGetWindowAttributes(self.display, self.root.to_x(), &mut attrs);
+            xlib::XGetWindowAttributes(self.display, window_id.to_x(), &mut attrs);
 
             (attrs.width, attrs.height)
         }
