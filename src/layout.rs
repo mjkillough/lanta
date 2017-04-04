@@ -1,6 +1,3 @@
-use std::rc::Rc;
-use std::slice::IterMut;
-
 use groups::GroupIter;
 use window::Window;
 

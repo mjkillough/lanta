@@ -1,6 +1,5 @@
 use std::rc::Rc;
 use std::collections::HashMap;
-use std::fmt;
 use std::os::raw::c_uint;
 
 use x11::xlib;
@@ -9,6 +8,7 @@ use super::RustWindowManager;
 
 
 /// Represents a modifier key.
+#[allow(dead_code)]
 pub enum ModKey {
     Mod1,
     Mod2,
@@ -90,9 +90,5 @@ impl KeyHandlers {
 
     pub fn get(&self, key_combo: &KeyCombo) -> Option<KeyHandler> {
         self.handlers.get(key_combo).map(|rc| rc.clone())
-    }
-
-    pub fn dispatch(&self, key_combo: &KeyCombo, wm: &mut RustWindowManager) {
-        self.get(key_combo).map(|handler| (handler)(wm));
     }
 }

@@ -20,6 +20,7 @@ impl WindowId {
 }
 
 
+#[allow(non_snake_case)]
 struct InternedAtoms {
     WM_DELETE_WINDOW: xlib::Atom,
     WM_PROTOCOLS: xlib::Atom,

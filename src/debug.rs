@@ -6,7 +6,7 @@ use x11::xlib;
 
 // Error handler used during setup, which simply checks for the BadAccess error
 // which indicates that another WM is already running.
-pub unsafe extern "C" fn error_handler_init(display: *mut xlib::Display,
+pub unsafe extern "C" fn error_handler_init(_: *mut xlib::Display,
                                             err: *mut xlib::XErrorEvent)
                                             -> c_int {
     if (*err).error_code == xlib::BadAccess {

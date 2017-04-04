@@ -4,15 +4,7 @@ extern crate env_logger;
 extern crate libc;
 extern crate x11;
 
-use std::ffi::{CStr, CString};
-use std::iter::Enumerate;
-use std::os::raw::{c_int, c_char, c_long, c_ulong, c_void};
-use std::ptr;
-use std::convert::From;
-use std::rc::{Rc, Weak};
-use std::slice::{Iter, IterMut};
-
-use x11::xlib;
+use std::rc::Rc;
 
 mod debug;
 mod groups;
@@ -22,7 +14,7 @@ mod window;
 mod x;
 
 use layout::{Layout, TiledLayout};
-use keys::{KeyCombo, KeyHandler, KeyHandlers, ModKey};
+use keys::{KeyCombo, KeyHandlers, ModKey};
 use x::{Connection, Event, WindowId};
 use window::Window;
 use groups::{Group, GroupWindow};
@@ -78,7 +70,7 @@ impl RustWindowManager {
 
     fn run_event_loop(&mut self) {
         let event_loop_connection = self.connection.clone();
-        let mut event_loop = event_loop_connection.get_event_loop();
+        let event_loop = event_loop_connection.get_event_loop();
         for event in event_loop {
             match event {
                 Event::MapRequest(window_id) => self.on_map_request(window_id),
