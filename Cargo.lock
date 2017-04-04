@@ -1,5 +1,5 @@
 [root]
-name = "rwm"
+name = "lanta"
 version = "0.1.0"
 dependencies = [
  "env_logger 0.4.2 (registry+https://github.com/rust-lang/crates.io-index)",
