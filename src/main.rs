@@ -122,6 +122,17 @@ fn focus_previous(wm: &mut RustWindowManager) {
     wm.focus_previous();
 }
 
+fn shuffle_next(wm: &mut RustWindowManager) {
+    wm.get_focused().map(|mut w| w.shuffle_next());
+    wm.layout();
+}
+
+fn shuffle_previous(wm: &mut RustWindowManager) {
+    wm.get_focused().map(|mut w| w.shuffle_previous());
+    wm.layout();
+}
+
+
 fn main() {
     env_logger::init().unwrap();
 
@@ -130,7 +141,11 @@ fn main() {
                                      (KeyCombo::new(vec![ModKey::Mod4], x11::keysym::XK_y),
                                       Rc::new(focus_next)),
                                      (KeyCombo::new(vec![ModKey::Mod4], x11::keysym::XK_u),
-                                      Rc::new(focus_previous))]);
+                                      Rc::new(focus_previous)),
+                                     (KeyCombo::new(vec![ModKey::Mod4], x11::keysym::XK_i),
+                                      Rc::new(shuffle_next)),
+                                     (KeyCombo::new(vec![ModKey::Mod4], x11::keysym::XK_o),
+                                      Rc::new(shuffle_previous))]);
 
     let layout = Box::new(TiledLayout {});
     let config = Config {

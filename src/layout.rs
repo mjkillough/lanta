@@ -18,7 +18,9 @@ impl Layout for TiledLayout {
         let tile_height = height / stack.len() as i32;
 
         for (i, window) in stack.enumerate() {
-            window.configure(0, i as i32 * tile_height, width, tile_height);
+            window.without_focus_tracking(|window| {
+                window.configure(0, i as i32 * tile_height, width, tile_height);
+            });
         }
     }
 }

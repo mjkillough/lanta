@@ -1,4 +1,5 @@
 use std;
+use std::fmt;
 use std::ffi;
 use std::os::raw::{c_int, c_char, c_long, c_uchar, c_uint, c_ulong, c_void};
 use std::ptr;
@@ -16,6 +17,12 @@ pub struct WindowId(xlib::Window);
 impl WindowId {
     fn to_x(&self) -> xlib::Window {
         self.0
+    }
+}
+
+impl fmt::Display for WindowId {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", self.0)
     }
 }
 
@@ -211,8 +218,7 @@ impl Connection {
     /// Registers for interesting events on the window.
     pub fn register_window_events(&self, window_id: &WindowId, key_handlers: &KeyHandlers) {
         unsafe {
-            // Necessary in order to track which window is currently focused.
-            xlib::XSelectInput(self.display, window_id.to_x(), xlib::EnterWindowMask);
+            self.enable_window_focus_tracking(window_id);
 
             for key in key_handlers.key_combos() {
                 let keycode = xlib::XKeysymToKeycode(self.display, key.keysym as u64) as i32;
@@ -224,6 +230,18 @@ impl Connection {
                                xlib::GrabModeAsync,
                                xlib::GrabModeAsync);
             }
+        }
+    }
+
+    pub fn enable_window_focus_tracking(&self, window_id: &WindowId) {
+        unsafe {
+            xlib::XSelectInput(self.display, window_id.to_x(), xlib::EnterWindowMask);
+        }
+    }
+
+    pub fn disable_window_focus_tracking(&self, window_id: &WindowId) {
+        unsafe {
+            xlib::XSelectInput(self.display, window_id.to_x(), 0);
         }
     }
 

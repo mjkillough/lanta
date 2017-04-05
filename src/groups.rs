@@ -102,6 +102,30 @@ impl Group {
             .map(|rc| Rc::downgrade(&rc));
         self.update_focus();
     }
+
+    fn shuffle_next(&mut self, window_id: &WindowId) {
+        self.stack
+            .iter()
+            .position(|w| w.as_ref() == window_id)
+            .map(|current_idx| {
+                     let next_idx = (current_idx + 1) % self.stack.len();
+                     self.stack.swap(current_idx, next_idx);
+                 });
+    }
+
+    fn shuffle_previous(&mut self, window_id: &WindowId) {
+        self.stack
+            .iter()
+            .position(|w| w.as_ref() == window_id)
+            .map(|current_idx| {
+                let previous_idx = if current_idx == 0 {
+                    self.stack.len() - 1
+                } else {
+                    (current_idx - 1) % self.stack.len()
+                };
+                self.stack.swap(current_idx, previous_idx);
+            });
+    }
 }
 
 
@@ -119,6 +143,14 @@ impl<'a> GroupWindow<'a> {
     pub fn focus(&mut self) {
         self.group.focus = Some(Rc::downgrade(&self.window_id));
         self.group.update_focus();
+    }
+
+    pub fn shuffle_next(&mut self) {
+        self.group.shuffle_next(self.window_id.as_ref());
+    }
+
+    pub fn shuffle_previous(&mut self) {
+        self.group.shuffle_previous(self.window_id.as_ref());
     }
 }
 
