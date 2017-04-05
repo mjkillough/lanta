@@ -12,14 +12,15 @@ mod debug;
 mod groups;
 mod keys;
 mod layout;
+mod stack;
 mod window;
 mod x;
 
-use layout::{Layout, TiledLayout};
-use keys::{KeyCombo, KeyHandlers, ModKey};
-use x::{Connection, Event, WindowId};
-use window::Window;
 use groups::{Group, GroupWindow};
+use keys::{KeyCombo, KeyHandlers, ModKey};
+use layout::{Layout, TiledLayout};
+use window::Window;
+use x::{Connection, Event, WindowId};
 
 
 struct Config {

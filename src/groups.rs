@@ -1,52 +1,39 @@
-use std::rc::{Rc, Weak};
+use std::rc::Rc;
 use std::slice::IterMut;
 
+use stack::Stack;
 use window::Window;
 use x::{Connection, WindowId};
 
 
 pub struct Group {
     connection: Rc<Connection>,
-    stack: Vec<Rc<WindowId>>,
-    focus: Option<Weak<WindowId>>,
+    stack: Stack<WindowId>,
 }
 
 impl Group {
     pub fn new(connection: Rc<Connection>) -> Group {
         Group {
             connection: connection,
-            stack: Vec::new(),
-            focus: None,
+            stack: Stack::new(),
         }
     }
 
     pub fn add_window(&mut self, window_id: WindowId) {
-        self.stack.push(Rc::new(window_id));
+        self.stack.push(window_id);
+    }
+
+    fn remove_window(&mut self, window_id: &WindowId) {
+        self.stack.remove(window_id);
     }
 
     pub fn find_window_by_id<'a>(&'a mut self, window_id: &WindowId) -> Option<GroupWindow<'a>> {
-        self.stack
-            .iter()
-            .find(|rc| rc.as_ref() == window_id)
-            .map(|rc| rc.clone())
-            .map(move |rc| {
-                     GroupWindow {
-                         group: self,
-                         window_id: rc,
-                     }
-                 })
-    }
-
-    pub fn get_focused<'a>(&'a mut self) -> Option<GroupWindow<'a>> {
-        self.focus
-            .clone()
-            .and_then(|rc| rc.upgrade())
-            .map(move |window_id| {
-                     GroupWindow {
-                         group: self,
-                         window_id: window_id,
-                     }
-                 })
+        self.stack.find_by_value(window_id).map(move |rc| {
+                                                    GroupWindow {
+                                                        group: self,
+                                                        window_id: rc,
+                                                    }
+                                                })
     }
 
     pub fn iter_mut<'a>(&'a mut self) -> GroupIter<'a> {
@@ -56,75 +43,35 @@ impl Group {
         }
     }
 
-    fn update_focus(&self) {
-        self.focus
-            .clone()
-            .and_then(|rc| rc.upgrade())
-            .map(|window_id| self.connection.focus_window(&window_id));
+    pub fn get_focused<'a>(&'a mut self) -> Option<GroupWindow<'a>> {
+        self.stack.get_focused().map(move |rc| {
+                                         GroupWindow {
+                                             group: self,
+                                             window_id: rc,
+                                         }
+                                     })
+    }
+
+    fn apply_focus_to_window(&mut self) {
+        self.stack.get_focused().map(|window_id| self.connection.focus_window(&window_id));
     }
 
     pub fn focus_next(&mut self) {
-        self.focus = self.focus
-            .clone()
-            .and_then(|rc| rc.upgrade())
-            .and_then(|current| self.stack.iter().position(|rc| rc == &current))
-            .map(|current_idx| {
-                     let next_idx = (current_idx + 1) % self.stack.len();
-                     self.stack[next_idx].clone()
-                 })
-            .or_else(|| if self.stack.is_empty() {
-                         None
-                     } else {
-                         Some(self.stack[0].clone())
-                     })
-            .map(|rc| Rc::downgrade(&rc));
-        self.update_focus();
+        self.stack.focus_next();
+        self.apply_focus_to_window();
     }
 
     pub fn focus_previous(&mut self) {
-        self.focus = self.focus
-            .clone()
-            .and_then(|rc| rc.upgrade())
-            .and_then(|current| self.stack.iter().position(|rc| rc == &current))
-            .map(|current_idx| {
-                let next_idx = if current_idx == 0 {
-                    self.stack.len() - 1
-                } else {
-                    (current_idx - 1) % self.stack.len()
-                };
-                self.stack[next_idx].clone()
-            })
-            .or_else(|| if self.stack.is_empty() {
-                         None
-                     } else {
-                         Some(self.stack[0].clone())
-                     })
-            .map(|rc| Rc::downgrade(&rc));
-        self.update_focus();
+        self.stack.focus_previous();
+        self.apply_focus_to_window();
     }
 
-    fn shuffle_next(&mut self, window_id: &WindowId) {
-        self.stack
-            .iter()
-            .position(|w| w.as_ref() == window_id)
-            .map(|current_idx| {
-                     let next_idx = (current_idx + 1) % self.stack.len();
-                     self.stack.swap(current_idx, next_idx);
-                 });
+    pub fn shuffle_next(&mut self, window_id: &WindowId) {
+        self.stack.shuffle_next(window_id);
     }
 
-    fn shuffle_previous(&mut self, window_id: &WindowId) {
-        self.stack
-            .iter()
-            .position(|w| w.as_ref() == window_id)
-            .map(|current_idx| {
-                let previous_idx = if current_idx == 0 {
-                    self.stack.len() - 1
-                } else {
-                    (current_idx - 1) % self.stack.len()
-                };
-                self.stack.swap(current_idx, previous_idx);
-            });
+    pub fn shuffle_previous(&mut self, window_id: &WindowId) {
+        self.stack.shuffle_previous(window_id);
     }
 }
 
@@ -135,14 +82,15 @@ pub struct GroupWindow<'a> {
 }
 
 impl<'a> GroupWindow<'a> {
-    pub fn remove_from_group(self) {
-        let window_id = self.window_id.clone();
-        self.group.stack.retain(|w| w != &window_id)
+    pub fn remove_from_group(self) -> WindowId {
+        self.group.remove_window(&self.window_id);
+        Rc::try_unwrap(self.window_id)
+            .expect("Dangling reference to WindowId after removal from group")
     }
 
     pub fn focus(&mut self) {
-        self.group.focus = Some(Rc::downgrade(&self.window_id));
-        self.group.update_focus();
+        self.group.stack.set_focus(&self.window_id);
+        self.group.apply_focus_to_window();
     }
 
     pub fn shuffle_next(&mut self) {
