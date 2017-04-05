@@ -6,7 +6,9 @@ pub trait Window {
     fn connection(&self) -> &Connection;
     fn id(&self) -> &WindowId;
 
-    fn without_focus_tracking<'a, F>(&'a self, func: F) where F: Fn(&'a Self) {
+    fn without_focus_tracking<'a, F>(&'a self, func: F)
+        where F: Fn(&'a Self)
+    {
         self.connection().disable_window_focus_tracking(self.id());
         (func)(self);
         self.connection().enable_window_focus_tracking(self.id());
