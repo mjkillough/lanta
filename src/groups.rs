@@ -89,7 +89,7 @@ impl<'a> GroupWindow<'a> {
     }
 
     pub fn focus(&mut self) {
-        self.group.stack.set_focus(&self.window_id);
+        self.group.stack.set_focus(Some(&self.window_id));
         self.group.apply_focus_to_window();
     }
 
