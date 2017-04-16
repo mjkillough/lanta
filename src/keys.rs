@@ -49,7 +49,8 @@ pub struct KeyCombo {
 
 impl KeyCombo {
     pub fn new(mods: Vec<ModKey>, keysym: Key) -> KeyCombo {
-        let mask = mods.iter().fold(0, |mask, mod_key| mask | mod_key.mask());
+        let mask = mods.iter()
+            .fold(0, |mask, mod_key| mask | mod_key.mask());
         debug!("{}", mask);
         KeyCombo {
             mod_mask: mask,

@@ -28,12 +28,14 @@ impl Group {
     }
 
     pub fn find_window_by_id<'a>(&'a mut self, window_id: &WindowId) -> Option<GroupWindow<'a>> {
-        self.stack.find_by_value(window_id).map(move |rc| {
-                                                    GroupWindow {
-                                                        group: self,
-                                                        window_id: rc,
-                                                    }
-                                                })
+        self.stack
+            .find_by_value(window_id)
+            .map(move |rc| {
+                     GroupWindow {
+                         group: self,
+                         window_id: rc,
+                     }
+                 })
     }
 
     pub fn iter_mut<'a>(&'a mut self) -> GroupIter<'a> {
@@ -44,16 +46,20 @@ impl Group {
     }
 
     pub fn get_focused<'a>(&'a mut self) -> Option<GroupWindow<'a>> {
-        self.stack.get_focused().map(move |rc| {
-                                         GroupWindow {
-                                             group: self,
-                                             window_id: rc,
-                                         }
-                                     })
+        self.stack
+            .get_focused()
+            .map(move |rc| {
+                     GroupWindow {
+                         group: self,
+                         window_id: rc,
+                     }
+                 })
     }
 
     fn apply_focus_to_window(&mut self) {
-        self.stack.get_focused().map(|window_id| self.connection.focus_window(&window_id));
+        self.stack
+            .get_focused()
+            .map(|window_id| self.connection.focus_window(&window_id));
     }
 
     pub fn focus_next(&mut self) {
@@ -122,12 +128,14 @@ impl<'a> Iterator for GroupIter<'a> {
     type Item = GroupIterItem<'a>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        self.inner.next().map(|window_id| {
-                                  GroupIterItem {
-                                      connection: self.connection,
-                                      window_id: window_id,
-                                  }
-                              })
+        self.inner
+            .next()
+            .map(|window_id| {
+                     GroupIterItem {
+                         connection: self.connection,
+                         window_id: window_id,
+                     }
+                 })
     }
 }
 

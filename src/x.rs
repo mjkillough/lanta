@@ -1,6 +1,7 @@
 use std;
 use std::fmt;
 use std::ffi;
+use std::slice;
 use std::os::raw::{c_int, c_char, c_long, c_uchar, c_uint, c_ulong, c_void};
 use std::ptr;
 
@@ -101,6 +102,34 @@ impl Connection {
         &self.root
     }
 
+    pub fn top_level_windows(&self) -> Vec<WindowId> {
+        let mut root: xlib::Window = 0;
+        let mut parent: xlib::Window = 0;
+        let mut children: *mut xlib::Window = ptr::null_mut();
+        let mut num_children: c_uint = 0;
+        unsafe {
+            xlib::XQueryTree(self.display,
+                             self.root.to_x(),
+                             &mut root,
+                             &mut parent,
+                             &mut children,
+                             &mut num_children);
+        }
+
+        if children.is_null() || num_children == 0 {
+            return vec![];
+        }
+
+        let slice = unsafe { slice::from_raw_parts(children, num_children as usize) };
+        let vec: Vec<WindowId> = slice.iter().map(|id| WindowId(*id)).collect();
+
+        unsafe {
+            xlib::XFree(children as *mut c_void);
+        }
+
+        vec
+    }
+
     /// Queries the WM_PROTOCOLS property of a window, returning a list of the protocols that it
     /// supports.
     // TODO: Have this return a list of atoms, rather than a list of strings. (Perhaps we should
@@ -124,8 +153,14 @@ impl Connection {
         let protocols: Vec<String> = unsafe {
             xlib::XGetAtomNames(self.display, atoms, count, pointers.as_mut_ptr());
             pointers.set_len(count as usize);
-            pointers.iter()
-                .map(|buffer| ffi::CStr::from_ptr(*buffer).to_str().unwrap().to_owned())
+            pointers
+                .iter()
+                .map(|buffer| {
+                         ffi::CStr::from_ptr(*buffer)
+                             .to_str()
+                             .unwrap()
+                             .to_owned()
+                     })
                 .collect()
         };
 
@@ -166,8 +201,12 @@ impl Connection {
             format: 32,
             data: xlib::ClientMessageData::new(),
         };
-        client_message.data.set_long(0, self.atoms.WM_DELETE_WINDOW as c_long);
-        client_message.data.set_long(1, xlib::CurrentTime as c_long);
+        client_message
+            .data
+            .set_long(0, self.atoms.WM_DELETE_WINDOW as c_long);
+        client_message
+            .data
+            .set_long(1, xlib::CurrentTime as c_long);
         let mut event = xlib::XEvent::from(client_message);
         unsafe {
             xlib::XSendEvent(self.display,
