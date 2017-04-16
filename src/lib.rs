@@ -19,13 +19,11 @@ pub mod x;
 
 use groups::{Group, GroupWindow};
 use keys::{KeyCombo, KeyHandler, KeyHandlers, ModKey};
-use layout::{Layout, TiledLayout};
 use window::Window;
 use x::{Connection, Event, WindowId};
 
 
 pub struct Config {
-    pub layout: Box<Layout>,
     pub keys: KeyHandlers,
 }
 
@@ -51,15 +49,6 @@ impl RustWindowManager {
 
                group: Group::new(connection.clone()),
            })
-    }
-
-    pub fn layout(&mut self) {
-        let root_window_id = self.connection.root_window_id();
-        let (width, height) = self.connection.get_window_geometry(&root_window_id);
-
-        self.config
-            .layout
-            .layout(width, height, self.group.iter_mut());
     }
 
     pub fn get_focused(&mut self) -> Option<GroupWindow> {
@@ -94,14 +83,12 @@ impl RustWindowManager {
         self.connection.map_window(&window_id);
 
         self.group.add_window(window_id);
-        self.layout();
     }
 
     fn on_destroy_notify(&mut self, window_id: WindowId) {
         self.group
             .find_window_by_id(&window_id)
             .map(|w| w.remove_from_group());
-        self.layout();
     }
 
     fn on_key_press(&mut self, key: KeyCombo) {
@@ -133,12 +120,10 @@ pub fn focus_previous(wm: &mut RustWindowManager) {
 
 pub fn shuffle_next(wm: &mut RustWindowManager) {
     wm.get_focused().map(|mut w| w.shuffle_next());
-    wm.layout();
 }
 
 pub fn shuffle_previous(wm: &mut RustWindowManager) {
     wm.get_focused().map(|mut w| w.shuffle_previous());
-    wm.layout();
 }
 
 pub fn spawn_command(command: Command) -> KeyHandler {

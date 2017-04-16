@@ -1,14 +1,16 @@
 use std::rc::Rc;
-use std::slice::IterMut;
+use std::slice::Iter;
 
 use stack::Stack;
 use window::Window;
 use x::{Connection, WindowId};
+use layout::{Layout, TiledLayout};
 
 
 pub struct Group {
     connection: Rc<Connection>,
     stack: Stack<WindowId>,
+    layout: Box<Layout>,
 }
 
 impl Group {
@@ -16,15 +18,27 @@ impl Group {
         Group {
             connection: connection,
             stack: Stack::new(),
+            layout: Box::new(TiledLayout {})
         }
     }
 
+    fn layout(&mut self) {
+        let (width, height) = self.connection.get_window_geometry(&self.connection.root_window_id());
+
+        self.layout.layout(width, height, self.iter());
+    }
+
+    // pub fn activate
+    // pub fn deactivate
+
     pub fn add_window(&mut self, window_id: WindowId) {
         self.stack.push(window_id);
+        self.layout();
     }
 
     fn remove_window(&mut self, window_id: &WindowId) {
         self.stack.remove(window_id);
+        self.layout();
     }
 
     pub fn find_window_by_id<'a>(&'a mut self, window_id: &WindowId) -> Option<GroupWindow<'a>> {
@@ -38,10 +52,10 @@ impl Group {
                  })
     }
 
-    pub fn iter_mut<'a>(&'a mut self) -> GroupIter<'a> {
+    fn iter<'a>(&'a self) -> GroupIter<'a> {
         GroupIter {
             connection: &self.connection,
-            inner: self.stack.iter_mut(),
+            inner: self.stack.iter(),
         }
     }
 
@@ -74,10 +88,12 @@ impl Group {
 
     pub fn shuffle_next(&mut self, window_id: &WindowId) {
         self.stack.shuffle_next(window_id);
+        self.layout();
     }
 
     pub fn shuffle_previous(&mut self, window_id: &WindowId) {
         self.stack.shuffle_previous(window_id);
+        self.layout();
     }
 }
 
@@ -121,7 +137,7 @@ impl<'a> Window for GroupWindow<'a> {
 
 pub struct GroupIter<'a> {
     connection: &'a Connection,
-    inner: IterMut<'a, Rc<WindowId>>,
+    inner: Iter<'a, Rc<WindowId>>,
 }
 
 impl<'a> Iterator for GroupIter<'a> {

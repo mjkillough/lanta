@@ -1,5 +1,5 @@
 use std::rc::{Rc, Weak};
-use std::slice::IterMut;
+use std::slice::Iter;
 
 
 pub struct Stack<T>
@@ -27,8 +27,8 @@ impl<T> Stack<T>
         self.vec.retain(|rc| rc.as_ref() != value);
     }
 
-    pub fn iter_mut<'a>(&'a mut self) -> IterMut<'a, Rc<T>> {
-        self.vec.iter_mut()
+    pub fn iter<'a>(&'a self) -> Iter<'a, Rc<T>> {
+        self.vec.iter()
     }
 
     pub fn find_by_value(&self, value: &T) -> Option<Rc<T>> {

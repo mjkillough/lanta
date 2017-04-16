@@ -30,7 +30,6 @@ fn main() {
     let layout = Box::new(TiledLayout {});
     let config = Config {
         keys: keys,
-        layout: layout,
     };
 
     let mut wm = RustWindowManager::new(config).unwrap();
