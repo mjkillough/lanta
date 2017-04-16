@@ -5,7 +5,9 @@ extern crate log;
 extern crate libc;
 extern crate x11;
 
+use std::process::Command;
 use std::rc::Rc;
+use std::sync::Mutex;
 
 mod debug;
 pub mod groups;
@@ -16,7 +18,7 @@ pub mod window;
 pub mod x;
 
 use groups::{Group, GroupWindow};
-use keys::{KeyCombo, KeyHandlers, ModKey};
+use keys::{KeyCombo, KeyHandler, KeyHandlers, ModKey};
 use layout::{Layout, TiledLayout};
 use window::Window;
 use x::{Connection, Event, WindowId};
@@ -137,4 +139,12 @@ pub fn shuffle_next(wm: &mut RustWindowManager) {
 pub fn shuffle_previous(wm: &mut RustWindowManager) {
     wm.get_focused().map(|mut w| w.shuffle_previous());
     wm.layout();
+}
+
+pub fn spawn_command(command: Command) -> KeyHandler {
+    let mutex = Mutex::new(command);
+    Rc::new(move |wm| {
+                let mut command = mutex.lock().unwrap();
+                command.spawn().unwrap();
+            })
 }

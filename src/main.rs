@@ -3,6 +3,7 @@ extern crate x11;
 
 extern crate lanta;
 
+use std::process::Command;
 use std::rc::Rc;
 
 use lanta::{Config, RustWindowManager};
@@ -22,7 +23,9 @@ fn main() {
                                      (KeyCombo::new(vec![ModKey::Mod4], x11::keysym::XK_i),
                                       Rc::new(lanta::shuffle_next)),
                                      (KeyCombo::new(vec![ModKey::Mod4], x11::keysym::XK_o),
-                                      Rc::new(lanta::shuffle_previous))]);
+                                      Rc::new(lanta::shuffle_previous)),
+                                     (KeyCombo::new(vec![ModKey::Mod4], x11::keysym::XK_p),
+                                      lanta::spawn_command(Command::new("xterm")))]);
 
     let layout = Box::new(TiledLayout {});
     let config = Config {
