@@ -254,6 +254,13 @@ impl Connection {
         }
     }
 
+    /// Unmap a window.
+    pub fn unmap_window(&self, window_id: &WindowId) {
+        unsafe {
+            xlib::XUnmapWindow(self.display, window_id.to_x());
+        }
+    }
+
     /// Registers for interesting events on the window.
     pub fn register_window_events(&self, window_id: &WindowId, key_handlers: &KeyHandlers) {
         unsafe {

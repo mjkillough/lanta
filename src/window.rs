@@ -15,6 +15,16 @@ pub trait Window {
         self.connection().enable_window_focus_tracking(self.id());
     }
 
+    /// Maps the window.
+    fn map(&self) {
+        self.connection().map_window(self.id());
+    }
+
+    /// Unmaps the window.
+    fn unmap(&self) {
+        self.connection().unmap_window(self.id());
+    }
+
     /// Sets the window's position and size.
     fn configure(&self, x: i32, y: i32, width: i32, height: i32) {
         self.connection()

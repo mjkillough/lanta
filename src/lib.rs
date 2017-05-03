@@ -71,6 +71,14 @@ impl RustWindowManager {
         self.group.shuffle_previous();
     }
 
+    pub fn layout_next(&mut self) {
+        self.group.layout_next();
+    }
+
+    pub fn layout_previous(&mut self) {
+        self.group.layout_previous();
+    }
+
     pub fn run_event_loop(&mut self) {
         let event_loop_connection = self.connection.clone();
         let event_loop = event_loop_connection.get_event_loop();
@@ -128,6 +136,10 @@ pub fn shuffle_next(wm: &mut RustWindowManager) {
 
 pub fn shuffle_previous(wm: &mut RustWindowManager) {
     wm.shuffle_previous();
+}
+
+pub fn layout_next(wm: &mut RustWindowManager) {
+    wm.layout_next();
 }
 
 pub fn spawn_command(command: Command) -> KeyHandler {

@@ -24,7 +24,9 @@ fn main() {
                                      (KeyCombo::new(vec![ModKey::Mod4], x11::keysym::XK_o),
                                       Rc::new(lanta::shuffle_previous)),
                                      (KeyCombo::new(vec![ModKey::Mod4], x11::keysym::XK_p),
-                                      lanta::spawn_command(Command::new("xterm")))]);
+                                      lanta::spawn_command(Command::new("xterm"))),
+                                     (KeyCombo::new(vec![ModKey::Mod4], x11::keysym::XK_b),
+                                      Rc::new(lanta::layout_next))]);
 
     let config = Config { keys: keys };
 

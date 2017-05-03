@@ -19,11 +19,31 @@ impl Layout for TiledLayout {
 
         for (i, window) in stack.enumerate() {
             window.without_focus_tracking(|window| {
+                                              window.map();
                                               window.configure(0,
                                                                i as i32 * tile_height,
                                                                width,
                                                                tile_height);
                                           });
+        }
+    }
+}
+
+
+pub struct StackLayout;
+
+impl Layout for StackLayout {
+    fn layout(&self, width: i32, height: i32, mut stack: GroupIter) {
+        if stack.len() == 0 {
+            return;
+        }
+
+        let first_window = stack.next().unwrap();
+        first_window.map();
+        first_window.configure(0, 0, width, height);
+
+        for window in stack {
+            window.unmap();
         }
     }
 }

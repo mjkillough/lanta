@@ -4,21 +4,25 @@ use std::slice::Iter;
 use stack::Stack;
 use window::Window;
 use x::{Connection, WindowId};
-use layout::{Layout, TiledLayout};
+use layout::{Layout, TiledLayout, StackLayout};
 
 
 pub struct Group {
     connection: Rc<Connection>,
     stack: Stack<WindowId>,
-    layout: Box<Layout>,
+    layouts: Stack<Box<Layout>>,
 }
 
 impl Group {
     pub fn new(connection: Rc<Connection>) -> Group {
+        let mut layouts = Stack::new();
+        layouts.push(Box::new(StackLayout {}) as Box<Layout>);
+        layouts.push(Box::new(TiledLayout {}) as Box<Layout>);
+
         Group {
             connection: connection,
             stack: Stack::new(),
-            layout: Box::new(TiledLayout {}),
+            layouts: layouts,
         }
     }
 
@@ -26,7 +30,9 @@ impl Group {
         let (width, height) = self.connection
             .get_window_geometry(&self.connection.root_window_id());
 
-        self.layout.layout(width, height, self.iter());
+        self.layouts
+            .focused()
+            .map(|l| l.layout(width, height, self.iter()));
     }
 
     // pub fn activate
@@ -89,6 +95,16 @@ impl Group {
 
     pub fn shuffle_previous(&mut self) {
         self.stack.shuffle_previous();
+        self.layout();
+    }
+
+    pub fn layout_next(&mut self) {
+        self.layouts.focus_next();
+        self.layout();
+    }
+
+    pub fn layout_previous(&mut self) {
+        self.layouts.focus_previous();
         self.layout();
     }
 }
