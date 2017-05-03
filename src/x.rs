@@ -292,6 +292,7 @@ impl Connection {
     }
 
     pub fn focus_window(&self, window_id: &WindowId) {
+        self.map_window(&window_id);
         unsafe {
             xlib::XSetInputFocus(self.display,
                                  window_id.to_x(),

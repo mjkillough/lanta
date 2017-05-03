@@ -1,16 +1,16 @@
-use groups::GroupIter;
+use groups::{GroupWindow, GroupIter};
 use window::Window;
 
 
 pub trait Layout {
-    fn layout(&self, width: i32, height: i32, stack: GroupIter);
+    fn layout(&self, width: i32, height: i32, focused: Option<GroupWindow>, stack: GroupIter);
 }
 
 
 pub struct TiledLayout;
 
 impl Layout for TiledLayout {
-    fn layout(&self, width: i32, height: i32, stack: GroupIter) {
+    fn layout(&self, width: i32, height: i32, _: Option<GroupWindow>, stack: GroupIter) {
         if stack.len() == 0 {
             return;
         }
@@ -33,17 +33,20 @@ impl Layout for TiledLayout {
 pub struct StackLayout;
 
 impl Layout for StackLayout {
-    fn layout(&self, width: i32, height: i32, mut stack: GroupIter) {
+    fn layout(&self, width: i32, height: i32, focused: Option<GroupWindow>, stack: GroupIter) {
         if stack.len() == 0 {
             return;
         }
 
-        let first_window = stack.next().unwrap();
-        first_window.map();
-        first_window.configure(0, 0, width, height);
 
         for window in stack {
-            window.unmap();
+            window.without_focus_tracking(|window| window.unmap());
         }
+        focused.map(|window| {
+                        window.without_focus_tracking(|window| {
+                                                          window.map();
+                                                          window.configure(0, 0, width, height);
+                                                      })
+                    });
     }
 }

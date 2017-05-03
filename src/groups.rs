@@ -30,9 +30,18 @@ impl Group {
         let (width, height) = self.connection
             .get_window_geometry(&self.connection.root_window_id());
 
+        let focused = self.stack
+            .focused()
+            .map(|window_id| {
+                     GroupWindow {
+                         connection: &self.connection,
+                         window_id: &window_id,
+                     }
+                 });
+
         self.layouts
             .focused()
-            .map(|l| l.layout(width, height, self.iter()));
+            .map(|l| l.layout(width, height, focused, self.iter()));
     }
 
     // pub fn activate
@@ -76,6 +85,7 @@ impl Group {
         self.stack
             .focused()
             .map(|window_id| self.connection.focus_window(&window_id));
+        self.layout();
     }
 
     pub fn focus_next(&mut self) {
