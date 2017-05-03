@@ -18,12 +18,13 @@ impl Group {
         Group {
             connection: connection,
             stack: Stack::new(),
-            layout: Box::new(TiledLayout {})
+            layout: Box::new(TiledLayout {}),
         }
     }
 
     fn layout(&mut self) {
-        let (width, height) = self.connection.get_window_geometry(&self.connection.root_window_id());
+        let (width, height) = self.connection
+            .get_window_geometry(&self.connection.root_window_id());
 
         self.layout.layout(width, height, self.iter());
     }
@@ -36,20 +37,15 @@ impl Group {
         self.layout();
     }
 
-    fn remove_window(&mut self, window_id: &WindowId) {
-        self.stack.remove(window_id);
+    pub fn remove_window(&mut self, window_id: &WindowId) -> WindowId {
+        let removed = self.stack.remove(|w| w == window_id);
         self.layout();
+        removed
     }
 
-    pub fn find_window_by_id<'a>(&'a mut self, window_id: &WindowId) -> Option<GroupWindow<'a>> {
-        self.stack
-            .find_by_value(window_id)
-            .map(move |rc| {
-                     GroupWindow {
-                         group: self,
-                         window_id: rc,
-                     }
-                 })
+    pub fn focus(&mut self, window_id: &WindowId) {
+        self.stack.focus(|id| id == window_id);
+        self.apply_focus_to_window();
     }
 
     fn iter<'a>(&'a self) -> GroupIter<'a> {
@@ -59,20 +55,20 @@ impl Group {
         }
     }
 
-    pub fn get_focused<'a>(&'a mut self) -> Option<GroupWindow<'a>> {
+    pub fn get_focused<'a>(&'a self) -> Option<GroupWindow<'a>> {
         self.stack
-            .get_focused()
-            .map(move |rc| {
+            .focused()
+            .map(move |ref id| {
                      GroupWindow {
-                         group: self,
-                         window_id: rc,
+                         connection: &self.connection,
+                         window_id: &id,
                      }
                  })
     }
 
     fn apply_focus_to_window(&mut self) {
         self.stack
-            .get_focused()
+            .focused()
             .map(|window_id| self.connection.focus_window(&window_id));
     }
 
@@ -86,68 +82,31 @@ impl Group {
         self.apply_focus_to_window();
     }
 
-    pub fn shuffle_next(&mut self, window_id: &WindowId) {
-        self.stack.shuffle_next(window_id);
-        self.layout();
-    }
-
-    pub fn shuffle_previous(&mut self, window_id: &WindowId) {
-        self.stack.shuffle_previous(window_id);
-        self.layout();
-    }
-}
-
-
-pub struct GroupWindow<'a> {
-    group: &'a mut Group,
-    window_id: Rc<WindowId>,
-}
-
-impl<'a> GroupWindow<'a> {
-    pub fn remove_from_group(self) -> WindowId {
-        self.group.remove_window(&self.window_id);
-        Rc::try_unwrap(self.window_id)
-            .expect("Dangling reference to WindowId after removal from group")
-    }
-
-    pub fn focus(&mut self) {
-        self.group.stack.set_focus(Some(&self.window_id));
-        self.group.apply_focus_to_window();
-    }
-
     pub fn shuffle_next(&mut self) {
-        self.group.shuffle_next(self.window_id.as_ref());
+        self.stack.shuffle_next();
+        self.layout();
     }
 
     pub fn shuffle_previous(&mut self) {
-        self.group.shuffle_previous(self.window_id.as_ref());
-    }
-}
-
-impl<'a> Window for GroupWindow<'a> {
-    fn connection(&self) -> &Connection {
-        &self.group.connection
-    }
-
-    fn id(&self) -> &WindowId {
-        self.window_id.as_ref()
+        self.stack.shuffle_previous();
+        self.layout();
     }
 }
 
 
 pub struct GroupIter<'a> {
     connection: &'a Connection,
-    inner: Iter<'a, Rc<WindowId>>,
+    inner: Iter<'a, WindowId>,
 }
 
 impl<'a> Iterator for GroupIter<'a> {
-    type Item = GroupIterItem<'a>;
+    type Item = GroupWindow<'a>;
 
     fn next(&mut self) -> Option<Self::Item> {
         self.inner
             .next()
             .map(|window_id| {
-                     GroupIterItem {
+                     GroupWindow {
                          connection: self.connection,
                          window_id: window_id,
                      }
@@ -162,12 +121,12 @@ impl<'a> ExactSizeIterator for GroupIter<'a> {
 }
 
 
-pub struct GroupIterItem<'a> {
+pub struct GroupWindow<'a> {
     connection: &'a Connection,
     window_id: &'a WindowId,
 }
 
-impl<'a> Window for GroupIterItem<'a> {
+impl<'a> Window for GroupWindow<'a> {
     fn connection(&self) -> &Connection {
         self.connection
     }

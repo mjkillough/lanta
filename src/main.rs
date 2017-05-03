@@ -8,7 +8,6 @@ use std::rc::Rc;
 
 use lanta::{Config, RustWindowManager};
 use lanta::keys::{KeyCombo, KeyHandlers, ModKey};
-use lanta::layout::TiledLayout;
 
 
 fn main() {
@@ -27,10 +26,7 @@ fn main() {
                                      (KeyCombo::new(vec![ModKey::Mod4], x11::keysym::XK_p),
                                       lanta::spawn_command(Command::new("xterm")))]);
 
-    let layout = Box::new(TiledLayout {});
-    let config = Config {
-        keys: keys,
-    };
+    let config = Config { keys: keys };
 
     let mut wm = RustWindowManager::new(config).unwrap();
     wm.run_event_loop();

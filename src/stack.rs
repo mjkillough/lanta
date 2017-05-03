@@ -1,17 +1,12 @@
-use std::rc::{Rc, Weak};
 use std::slice::Iter;
 
 
-pub struct Stack<T>
-    where T: PartialEq
-{
-    vec: Vec<Rc<T>>,
-    focus: Option<Weak<T>>,
+pub struct Stack<T> {
+    vec: Vec<T>,
+    focus: Option<usize>,
 }
 
-impl<T> Stack<T>
-    where T: PartialEq
-{
+impl<T> Stack<T> {
     pub fn new() -> Stack<T> {
         Stack {
             vec: Vec::new(),
@@ -20,94 +15,93 @@ impl<T> Stack<T>
     }
 
     pub fn push(&mut self, value: T) {
-        self.vec.push(Rc::new(value));
+        self.vec.push(value);
+        self.ensure_focus();
     }
 
-    pub fn remove(&mut self, value: &T) {
-        self.vec.retain(|rc| rc.as_ref() != value);
+    pub fn remove<P>(&mut self, p: P) -> T
+        where P: FnMut(&T) -> bool
+    {
+        let position = self.vec
+            .iter()
+            .position(p)
+            .expect("No element in stack matches predicate");
+        let element = self.vec.remove(position);
+        // We might have removed the focus element. A non-empty stack should always focus something.
+        self.ensure_focus();
+        element
     }
 
-    pub fn iter<'a>(&'a self) -> Iter<'a, Rc<T>> {
+    pub fn iter(&self) -> Iter<T> {
         self.vec.iter()
     }
 
-    pub fn find_by_value(&self, value: &T) -> Option<Rc<T>> {
-        self.vec
+    pub fn focused(&self) -> Option<&T> {
+        self.focus.and_then(|idx| self.vec.get(idx))
+    }
+
+    /// Focuses the first element in the stack that matches the predicate.
+    ///
+    /// Panics if no element matches the predicate.
+    pub fn focus<P>(&mut self, p: P)
+        where P: FnMut(&T) -> bool
+    {
+        let position = self.vec
             .iter()
-            .find(|rc| rc.as_ref() == value)
-            .map(|rc| rc.clone())
+            .position(p)
+            .expect("No element in stack matches predicate");
+        self.focus = Some(position);
     }
 
-    pub fn get_focused(&self) -> Option<Rc<T>> {
-        self.focus.clone().and_then(|rc| rc.upgrade())
+    fn ensure_focus(&mut self) {
+        self.focus = self.focus
+            .or(if self.vec.is_empty() { None } else { Some(0) });
     }
 
-    pub fn set_focus(&mut self, item: Option<&Rc<T>>) {
-        self.focus = item.map(|rc| Rc::downgrade(rc));
+    fn next_index(&self, index: usize) -> usize {
+        (index + 1) % self.vec.len()
+    }
+
+    fn previous_index(&self, index: usize) -> usize {
+        if index == 0 {
+            self.vec.len() - 1
+        } else {
+            (index - 1) % self.vec.len()
+        }
     }
 
     pub fn focus_next(&mut self) {
-        self.focus = self.focus
-            .clone()
-            .and_then(|rc| rc.upgrade())
-            .and_then(|current| self.vec.iter().position(|rc| rc == &current))
-            .map(|current_idx| {
-                     let next_idx = (current_idx + 1) % self.vec.len();
-                     self.vec[next_idx].clone()
-                 })
-            .or_else(|| if self.vec.is_empty() {
-                         None
-                     } else {
-                         Some(self.vec[0].clone())
-                     })
-            .map(|rc| Rc::downgrade(&rc));
+        self.focus = self.focus.map(|idx| self.next_index(idx));
     }
 
     pub fn focus_previous(&mut self) {
-        self.focus = self.focus
-            .clone()
-            .and_then(|rc| rc.upgrade())
-            .and_then(|current| self.vec.iter().position(|rc| rc == &current))
-            .map(|current_idx| {
-                     let next_idx = if current_idx == 0 {
-                         self.vec.len() - 1
-                     } else {
-                         (current_idx - 1) % self.vec.len()
-                     };
-                     self.vec[next_idx].clone()
-                 })
-            .or_else(|| if self.vec.is_empty() {
-                         None
-                     } else {
-                         Some(self.vec[0].clone())
-                     })
-            .map(|rc| Rc::downgrade(&rc));
+        self.focus = self.focus.map(|idx| self.previous_index(idx));
     }
 
-    pub fn shuffle_next(&mut self, value: &T) {
-        self.vec
-            .iter()
-            .position(|w| w.as_ref() == value)
-            .map(|current_idx| if current_idx == (self.vec.len() - 1) {
-                     let item = self.vec.remove(current_idx);
-                     self.vec.insert(0, item);
-                 } else {
-                     let next_idx = current_idx + 1;
-                     self.vec.swap(current_idx, next_idx);
-                 });
+    pub fn shuffle_next(&mut self) {
+        if let Some(current_idx) = self.focus {
+            let next_idx = self.next_index(current_idx);
+            if next_idx == 0 {
+                let item = self.vec.remove(current_idx);
+                self.vec.insert(0, item);
+            } else {
+                self.vec.swap(current_idx, next_idx);
+            }
+            self.focus = Some(next_idx);
+        }
     }
 
-    pub fn shuffle_previous(&mut self, value: &T) {
-        self.vec
-            .iter()
-            .position(|w| w.as_ref() == value)
-            .map(|current_idx| if current_idx == 0 {
-                     let item = self.vec.remove(0);
-                     self.vec.push(item);
-                 } else {
-                     let previous_idx = current_idx - 1;
-                     self.vec.swap(current_idx, previous_idx);
-                 });
+    pub fn shuffle_previous(&mut self) {
+        if let Some(current_idx) = self.focus {
+            let prev_idx = self.previous_index(current_idx);
+            if prev_idx == self.vec.len() - 1 {
+                let item = self.vec.remove(current_idx);
+                self.vec.push(item);
+            } else {
+                self.vec.swap(current_idx, prev_idx);
+            }
+            self.focus = Some(prev_idx);
+        }
     }
 }
 
@@ -120,18 +114,12 @@ mod test {
 
     use super::Stack;
 
-    fn assert_stack_contents<T>(stack: &Stack<T>, vec: Vec<T>)
-        where T: Copy + Debug + PartialEq
-    {
-        let vec: Vec<Rc<T>> = vec.iter().map(|v| Rc::new(*v)).collect();
-        assert_eq!(stack.vec, vec);
-    }
 
     #[test]
     fn test_push() {
         let mut stack = Stack::<u8>::new();
         stack.push(2);
-        assert_stack_contents(&stack, vec![2]);
+        assert_eq!(stack.vec, vec![2]);
     }
 
     #[test]
@@ -139,48 +127,36 @@ mod test {
         let mut stack = Stack::<u8>::new();
         stack.push(2);
         stack.push(3);
-        stack.push(3);
         stack.push(4);
-        stack.remove(&3);
-        assert_stack_contents(&stack, vec![2, 4]);
+        stack.remove(|v| v == &3);
+        assert_eq!(stack.vec, vec![2, 4]);
     }
 
     #[test]
-    fn test_iter_mut() {
+    fn test_iter() {
         let mut stack = Stack::<u8>::new();
         stack.push(2);
         stack.push(3);
         stack.push(4);
-        let mut iter = stack.iter_mut();
-        assert_eq!(iter.next(), Some(&mut Rc::new(2)));
-        assert_eq!(iter.next(), Some(&mut Rc::new(3)));
-        assert_eq!(iter.next(), Some(&mut Rc::new(4)));
+        let mut iter = stack.iter();
+        assert_eq!(iter.next(), Some(&2));
+        assert_eq!(iter.next(), Some(&3));
+        assert_eq!(iter.next(), Some(&4));
         assert_eq!(iter.next(), None);
-    }
-
-    #[test]
-    fn test_find_by_value() {
-        let mut stack = Stack::<u8>::new();
-        stack.push(2);
-        assert_eq!(stack.find_by_value(&2), Some(Rc::new(2)));
-        assert_eq!(stack.find_by_value(&3), None);
     }
 
     #[test]
     fn test_set_get_focus() {
         let mut stack = Stack::<u8>::new();
+        assert_eq!(stack.focused(), None);
         stack.push(2);
         stack.push(3);
-        assert_eq!(stack.get_focused(), None);
-        {
-            // Extra scope is important: two holds a reference to the Rc, which must go out of
-            // scope before .get_focused() returns None. (Sad).
-            let two = stack.find_by_value(&2).unwrap();
-            stack.set_focus(Some(&two));
-            assert_eq!(stack.get_focused(), Some(Rc::new(2)));
-        }
-        stack.remove(&2);
-        assert_eq!(stack.get_focused(), None);
+        assert_eq!(stack.focused(), Some(&2));
+        stack.remove(|v| v == &2);
+        // A non-empty stack should always have something focused.
+        assert_eq!(stack.focused(), Some(&3));
+        stack.remove(|v| v == &3);
+        assert_eq!(stack.focused(), None);
     }
 
     #[test]
@@ -189,17 +165,14 @@ mod test {
         stack.push(2);
         stack.push(3);
         stack.push(4);
+        assert_eq!(stack.focused(), Some(&2));
 
-        // If nothing is focused, focus_next() should pick the first item in the stack.
-        assert_eq!(stack.get_focused(), None);
         stack.focus_next();
-        assert_eq!(stack.get_focused(), Some(Rc::new(2)));
+        assert_eq!(stack.focused(), Some(&3));
         stack.focus_next();
-        assert_eq!(stack.get_focused(), Some(Rc::new(3)));
+        assert_eq!(stack.focused(), Some(&4));
         stack.focus_next();
-        assert_eq!(stack.get_focused(), Some(Rc::new(4)));
-        stack.focus_next();
-        assert_eq!(stack.get_focused(), Some(Rc::new(2)));
+        assert_eq!(stack.focused(), Some(&2));
     }
 
     #[test]
@@ -208,17 +181,14 @@ mod test {
         stack.push(2);
         stack.push(3);
         stack.push(4);
+        assert_eq!(stack.focused(), Some(&2));
 
-        // If nothing is focused, focus_previous() should pick the first item in the stack.
-        assert_eq!(stack.get_focused(), None);
         stack.focus_previous();
-        assert_eq!(stack.get_focused(), Some(Rc::new(2)));
+        assert_eq!(stack.focused(), Some(&4));
         stack.focus_previous();
-        assert_eq!(stack.get_focused(), Some(Rc::new(4)));
+        assert_eq!(stack.focused(), Some(&3));
         stack.focus_previous();
-        assert_eq!(stack.get_focused(), Some(Rc::new(3)));
-        stack.focus_previous();
-        assert_eq!(stack.get_focused(), Some(Rc::new(2)));
+        assert_eq!(stack.focused(), Some(&2));
     }
 
     #[test]
@@ -227,14 +197,15 @@ mod test {
         stack.push(2);
         stack.push(3);
         stack.push(4);
+        assert_eq!(stack.focused(), Some(&2));
 
-        assert_stack_contents(&stack, vec![2, 3, 4]);
-        stack.shuffle_next(&2);
-        assert_stack_contents(&stack, vec![3, 2, 4]);
-        stack.shuffle_next(&2);
-        assert_stack_contents(&stack, vec![3, 4, 2]);
-        stack.shuffle_next(&2);
-        assert_stack_contents(&stack, vec![2, 3, 4]);
+        assert_eq!(stack.vec, vec![2, 3, 4]);
+        stack.shuffle_next();
+        assert_eq!(stack.vec, vec![3, 2, 4]);
+        stack.shuffle_next();
+        assert_eq!(stack.vec, vec![3, 4, 2]);
+        stack.shuffle_next();
+        assert_eq!(stack.vec, vec![2, 3, 4]);
     }
 
     #[test]
@@ -243,13 +214,14 @@ mod test {
         stack.push(2);
         stack.push(3);
         stack.push(4);
+        assert_eq!(stack.focused(), Some(&2));
 
-        assert_stack_contents(&stack, vec![2, 3, 4]);
-        stack.shuffle_previous(&2);
-        assert_stack_contents(&stack, vec![3, 4, 2]);
-        stack.shuffle_previous(&2);
-        assert_stack_contents(&stack, vec![3, 2, 4]);
-        stack.shuffle_previous(&2);
-        assert_stack_contents(&stack, vec![2, 3, 4]);
+        assert_eq!(stack.vec, vec![2, 3, 4]);
+        stack.shuffle_previous();
+        assert_eq!(stack.vec, vec![3, 4, 2]);
+        stack.shuffle_previous();
+        assert_eq!(stack.vec, vec![3, 2, 4]);
+        stack.shuffle_previous();
+        assert_eq!(stack.vec, vec![2, 3, 4]);
     }
 }
