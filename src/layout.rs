@@ -2,14 +2,47 @@ use groups::{GroupIter, GroupWindow};
 use window::Window;
 
 
-pub trait Layout {
-    fn layout(&self, width: i32, height: i32, focused: Option<GroupWindow>, stack: GroupIter);
+pub trait LayoutClone {
+    fn clone_box(&self) -> Box<Layout>;
+}
+
+impl<T> LayoutClone for T
+    where T: 'static + Layout + Clone
+{
+    fn clone_box(&self) -> Box<Layout> {
+        Box::new(self.clone())
+    }
 }
 
 
-pub struct TiledLayout;
+pub trait Layout: LayoutClone {
+    fn name(&self) -> &str;
+    fn layout(&self, width: i32, height: i32, focused: Option<GroupWindow>, stack: GroupIter);
+}
+
+impl Clone for Box<Layout> {
+    fn clone(&self) -> Box<Layout> {
+        self.clone_box()
+    }
+}
+
+
+#[derive(Clone)]
+pub struct TiledLayout {
+    name: String,
+}
+
+impl TiledLayout {
+    pub fn new(name: String) -> Box<Layout> {
+        Box::new(TiledLayout { name })
+    }
+}
 
 impl Layout for TiledLayout {
+    fn name(&self) -> &str {
+        &self.name
+    }
+
     fn layout(&self, width: i32, height: i32, _: Option<GroupWindow>, stack: GroupIter) {
         if stack.len() == 0 {
             return;
@@ -30,9 +63,22 @@ impl Layout for TiledLayout {
 }
 
 
-pub struct StackLayout;
+#[derive(Clone)]
+pub struct StackLayout {
+    name: String,
+}
+
+impl StackLayout {
+    pub fn new(name: String) -> Box<Layout> {
+        Box::new(StackLayout { name })
+    }
+}
 
 impl Layout for StackLayout {
+    fn name(&self) -> &str {
+        &self.name
+    }
+
     fn layout(&self, width: i32, height: i32, focused: Option<GroupWindow>, stack: GroupIter) {
         if stack.len() == 0 {
             return;

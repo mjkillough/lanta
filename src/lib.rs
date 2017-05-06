@@ -17,42 +17,37 @@ mod stack;
 pub mod window;
 pub mod x;
 
-use groups::{Group, GroupWindow};
-use keys::{KeyCombo, KeyHandler, KeyHandlers, ModKey};
+use groups::{Group, GroupBuilder};
+use keys::{KeyCombo, KeyHandler, KeyHandlers};
+use layout::Layout;
 use stack::Stack;
 use window::Window;
 use x::{Connection, Event, WindowId};
 
 
-pub struct Config {
-    pub keys: KeyHandlers,
-}
-
-
 pub struct RustWindowManager {
     connection: Rc<Connection>,
-
-    config: Config,
-
+    keys: KeyHandlers,
     groups: Stack<Group>,
 }
 
 impl RustWindowManager {
-    pub fn new(config: Config) -> Result<Self, String> {
-        let connection = Connection::connect()?;
-        connection.install_as_wm(&config.keys)?;
-        let connection = Rc::new(connection);
+    pub fn new(keys: KeyHandlers,
+               groups: Vec<GroupBuilder>,
+               layouts: Vec<Box<Layout>>)
+               -> Result<Self, String> {
+        let connection = Rc::new(Connection::connect()?);
+        connection.install_as_wm(&keys)?;
 
-        let mut groups = Stack::new();
-        groups.push(Group::new("g1", connection.clone()));
-        groups.push(Group::new("g2", connection.clone()));
+        let groups: Vec<Group> = groups
+            .into_iter()
+            .map(|group: GroupBuilder| group.build(connection.clone(), layouts.clone()))
+            .collect();
 
         Ok(RustWindowManager {
                connection: connection.clone(),
-
-               config: config,
-
-               groups: groups,
+               keys: keys,
+               groups: Stack::from(groups),
            })
     }
 
@@ -89,7 +84,7 @@ impl RustWindowManager {
 
     fn on_map_request(&mut self, window_id: WindowId) {
         self.connection
-            .enable_window_key_events(&window_id, &self.config.keys);
+            .enable_window_key_events(&window_id, &self.keys);
         self.connection.enable_window_focus_tracking(&window_id);
         self.connection.map_window(&window_id);
 
@@ -113,10 +108,7 @@ impl RustWindowManager {
     }
 
     fn on_key_press(&mut self, key: KeyCombo) {
-        self.config
-            .keys
-            .get(&key)
-            .map(move |handler| (handler)(self));
+        self.keys.get(&key).map(move |handler| (handler)(self));
     }
 
     fn on_enter_notify(&mut self, window_id: WindowId) {
@@ -151,7 +143,7 @@ pub fn layout_next(wm: &mut RustWindowManager) {
 
 pub fn spawn_command(command: Command) -> KeyHandler {
     let mutex = Mutex::new(command);
-    Rc::new(move |wm| {
+    Rc::new(move |_| {
                 let mut command = mutex.lock().unwrap();
                 command.spawn().unwrap();
             })

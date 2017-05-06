@@ -1,10 +1,39 @@
-use layout::{Layout, StackLayout, TiledLayout};
 
+
+use layout::Layout;
 use stack::Stack;
 use std::rc::Rc;
 use std::slice::Iter;
 use window::Window;
 use x::{Connection, WindowId};
+
+
+#[derive(Clone)]
+pub struct GroupBuilder {
+    name: String,
+    default_layout: String,
+}
+
+impl GroupBuilder {
+    pub fn new(name: String, default_layout: String) -> GroupBuilder {
+        GroupBuilder {
+            name,
+            default_layout,
+        }
+    }
+
+    pub fn build(self, connection: Rc<Connection>, layouts: Vec<Box<Layout>>) -> Group {
+        let mut layouts_stack = Stack::from(layouts);
+        layouts_stack.focus(|layout| layout.name() == &self.default_layout);
+
+        Group {
+            name: self.name.clone(),
+            connection: connection,
+            stack: Stack::new(),
+            layouts: layouts_stack,
+        }
+    }
+}
 
 
 pub struct Group {
@@ -15,21 +44,6 @@ pub struct Group {
 }
 
 impl Group {
-    pub fn new<S>(name: S, connection: Rc<Connection>) -> Group
-        where S: Into<String>
-    {
-        let mut layouts = Stack::new();
-        layouts.push(Box::new(StackLayout {}) as Box<Layout>);
-        layouts.push(Box::new(TiledLayout {}) as Box<Layout>);
-
-        Group {
-            name: name.into(),
-            connection: connection,
-            stack: Stack::new(),
-            layouts: layouts,
-        }
-    }
-
     pub fn name(&self) -> &str {
         &self.name
     }

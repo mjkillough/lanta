@@ -1,6 +1,7 @@
 use std::slice::{Iter, IterMut};
 
 
+#[derive(Clone)]
 pub struct Stack<T> {
     vec: Vec<T>,
     focus: Option<usize>,
@@ -111,6 +112,17 @@ impl<T> Stack<T> {
             }
             self.focus = Some(prev_idx);
         }
+    }
+}
+
+impl<T> From<Vec<T>> for Stack<T> {
+    fn from(vec: Vec<T>) -> Self {
+        let mut stack = Stack {
+            vec: vec,
+            focus: None,
+        };
+        stack.ensure_focus();
+        stack
     }
 }
 
