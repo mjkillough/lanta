@@ -1,3 +1,5 @@
+write_mode = "Overwrite"
+
 normalize_comments = true
 reorder_imported_names = true
 reorder_imports = true
