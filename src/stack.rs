@@ -129,12 +129,15 @@ impl<T> From<Vec<T>> for Stack<T> {
 
 #[cfg(test)]
 mod test {
-
-
     use super::Stack;
-    use std::fmt::Debug;
-    use std::rc::Rc;
 
+    #[test]
+    fn test_from() {
+        let vec = vec![1, 2, 3];
+        let stack = Stack::from(vec.clone());
+        assert_eq!(stack.vec, vec);
+        assert_eq!(stack.focused(), Some(&vec[0]));
+    }
 
     #[test]
     fn test_push() {
