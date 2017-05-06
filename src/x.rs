@@ -81,7 +81,7 @@ impl Connection {
     /// SubstructureNotify and SubstructureRedirect events on the root window.
     /// If there is already a window manager on the display, then this will
     /// fail.
-    pub fn install_as_wm(&self) -> Result<(), String> {
+    pub fn install_as_wm(&self, key_handlers: &KeyHandlers) -> Result<(), String> {
         unsafe {
             // It's tricky to get state from the error handler to here, so we install a
             // special handler while becoming the WM that panics on error.
@@ -95,6 +95,8 @@ impl Connection {
             // error handler.
             xlib::XSetErrorHandler(Some(debug::error_handler));
         }
+
+        self.enable_window_key_events(&self.root, key_handlers);
 
         Ok(())
     }
@@ -264,11 +266,9 @@ impl Connection {
         }
     }
 
-    /// Registers for interesting events on the window.
-    pub fn register_window_events(&self, window_id: &WindowId, key_handlers: &KeyHandlers) {
+    /// Registers for key events.
+    pub fn enable_window_key_events(&self, window_id: &WindowId, key_handlers: &KeyHandlers) {
         unsafe {
-            self.enable_window_focus_tracking(window_id);
-
             for key in key_handlers.key_combos() {
                 let keycode = xlib::XKeysymToKeycode(self.display, key.keysym as u64) as i32;
                 xlib::XGrabKey(self.display,

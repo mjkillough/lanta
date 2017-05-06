@@ -40,7 +40,7 @@ pub struct RustWindowManager {
 impl RustWindowManager {
     pub fn new(config: Config) -> Result<Self, String> {
         let connection = Connection::connect()?;
-        connection.install_as_wm()?;
+        connection.install_as_wm(&config.keys)?;
         let connection = Rc::new(connection);
 
         let mut groups = Stack::new();
@@ -64,7 +64,9 @@ impl RustWindowManager {
         self.groups.focused_mut().expect("No active group!")
     }
 
-    pub fn switch_group<'a, S>(&'a mut self, name: S) where S: Into<&'a str> {
+    pub fn switch_group<'a, S>(&'a mut self, name: S)
+        where S: Into<&'a str>
+    {
         let name = name.into();
         self.group_mut().deactivate();
         self.groups.focus(|group| group.name() == name);
@@ -87,7 +89,8 @@ impl RustWindowManager {
 
     fn on_map_request(&mut self, window_id: WindowId) {
         self.connection
-            .register_window_events(&window_id, &self.config.keys);
+            .enable_window_key_events(&window_id, &self.config.keys);
+        self.connection.enable_window_focus_tracking(&window_id);
         self.connection.map_window(&window_id);
 
         self.group_mut().add_window(window_id);
