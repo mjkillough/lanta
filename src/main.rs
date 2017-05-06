@@ -3,13 +3,13 @@ extern crate x11;
 
 extern crate lanta;
 
+use std::process::Command;
 
 use lanta::cmd;
 use lanta::RustWindowManager;
 use lanta::groups::GroupBuilder;
 use lanta::keys::ModKey;
 use lanta::layout::{StackLayout, TiledLayout};
-use std::process::Command;
 use x11::keysym;
 
 

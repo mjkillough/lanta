@@ -1,7 +1,3 @@
-
-
-use debug;
-use keys::{KeyCombo, KeyHandlers, ModKey};
 use std;
 use std::ffi;
 use std::fmt;
@@ -10,6 +6,9 @@ use std::ptr;
 use std::slice;
 
 use x11::xlib;
+
+use debug;
+use keys::{KeyCombo, KeyHandlers, ModKey};
 
 
 /// A handle to an X Window.
