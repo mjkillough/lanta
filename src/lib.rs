@@ -5,10 +5,9 @@ extern crate log;
 extern crate libc;
 extern crate x11;
 
-use std::process::Command;
 use std::rc::Rc;
-use std::sync::Mutex;
 
+pub mod cmd;
 mod debug;
 pub mod groups;
 pub mod keys;
@@ -18,10 +17,9 @@ pub mod window;
 pub mod x;
 
 use groups::{Group, GroupBuilder};
-use keys::{KeyCombo, KeyHandler, KeyHandlers};
+use keys::{KeyCombo, KeyHandlers};
 use layout::Layout;
 use stack::Stack;
-use window::Window;
 use x::{Connection, Event, WindowId};
 
 
@@ -32,10 +30,13 @@ pub struct RustWindowManager {
 }
 
 impl RustWindowManager {
-    pub fn new(keys: KeyHandlers,
-               groups: Vec<GroupBuilder>,
-               layouts: Vec<Box<Layout>>)
-               -> Result<Self, String> {
+    pub fn new<K>(keys: K,
+                  groups: Vec<GroupBuilder>,
+                  layouts: Vec<Box<Layout>>)
+                  -> Result<Self, String>
+        where K: Into<KeyHandlers>
+    {
+        let keys = keys.into();
         let connection = Rc::new(Connection::connect()?);
         connection.install_as_wm(&keys)?;
 
@@ -67,6 +68,7 @@ impl RustWindowManager {
         self.groups.focus(|group| group.name() == name);
         self.group_mut().activate();
     }
+
 
     pub fn run_event_loop(&mut self) {
         let event_loop_connection = self.connection.clone();
@@ -114,41 +116,4 @@ impl RustWindowManager {
     fn on_enter_notify(&mut self, window_id: WindowId) {
         self.group_mut().focus(&window_id);
     }
-}
-
-
-pub fn close_window(wm: &mut RustWindowManager) {
-    wm.group_mut().get_focused().map(|w| w.close());
-}
-
-pub fn focus_next(wm: &mut RustWindowManager) {
-    wm.group_mut().focus_next();
-}
-
-pub fn focus_previous(wm: &mut RustWindowManager) {
-    wm.group_mut().focus_previous();
-}
-
-pub fn shuffle_next(wm: &mut RustWindowManager) {
-    wm.group_mut().shuffle_next();
-}
-
-pub fn shuffle_previous(wm: &mut RustWindowManager) {
-    wm.group_mut().shuffle_previous();
-}
-
-pub fn layout_next(wm: &mut RustWindowManager) {
-    wm.group_mut().layout_next();
-}
-
-pub fn spawn_command(command: Command) -> KeyHandler {
-    let mutex = Mutex::new(command);
-    Rc::new(move |_| {
-                let mut command = mutex.lock().unwrap();
-                command.spawn().unwrap();
-            })
-}
-
-pub fn switch_group(name: &'static str) -> KeyHandler {
-    Rc::new(move |wm| wm.switch_group(name))
 }

@@ -1,15 +1,14 @@
-
-
-use super::RustWindowManager;
 use std::collections::HashMap;
 use std::os::raw::c_uint;
-use std::rc::Rc;
 
 use x11::xlib;
+
+use cmd::Command;
 
 
 /// Represents a modifier key.
 #[allow(dead_code)]
+#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub enum ModKey {
     Mod1,
     Mod2,
@@ -18,14 +17,14 @@ pub enum ModKey {
     Mod5,
 }
 
-pub type ModMask = c_uint;
+type ModMask = c_uint;
 
 impl ModKey {
     pub fn mask_all() -> ModMask {
         xlib::Mod1Mask | xlib::Mod2Mask | xlib::Mod3Mask | xlib::Mod4Mask | xlib::Mod5Mask
     }
 
-    pub fn mask(&self) -> ModMask {
+    fn mask(&self) -> ModMask {
         match self {
             &ModKey::Mod1 => xlib::Mod1Mask,
             &ModKey::Mod2 => xlib::Mod2Mask,
@@ -38,7 +37,7 @@ impl ModKey {
 
 
 /// A single key, of the same type as the `x11::keysym` constants.
-pub type Key = c_uint;
+type Key = c_uint;
 
 
 /// A combination of zero or more mods and a key.
@@ -49,10 +48,9 @@ pub struct KeyCombo {
 }
 
 impl KeyCombo {
-    pub fn new(mods: Vec<ModKey>, keysym: Key) -> KeyCombo {
+    fn new(mods: Vec<ModKey>, keysym: Key) -> KeyCombo {
         let mask = mods.iter()
             .fold(0, |mask, mod_key| mask | mod_key.mask());
-        debug!("{}", mask);
         KeyCombo {
             mod_mask: mask,
             keysym: keysym,
@@ -61,38 +59,26 @@ impl KeyCombo {
 }
 
 
-// XXX We need to use Rc in order to allow us to borrow RustWindowManager
-// mutably to pass it to
-// handlers. However, using a Rc for an event handler sounds like a terrible
-// idea - could it cause
-// UAF?
-pub type KeyHandler = Rc<Fn(&mut RustWindowManager)>;
-
-
-/// A collection of `KeyHandler`.
 pub struct KeyHandlers {
-    handlers: HashMap<KeyCombo, KeyHandler>,
+    hashmap: HashMap<KeyCombo, Command>,
 }
 
 impl KeyHandlers {
-    pub fn new(mut handlers: Vec<(KeyCombo, KeyHandler)>) -> Self {
-        let mut hashmap = HashMap::new();
-        loop {
-            let (combo, handler) = match handlers.pop() {
-                Some((c, h)) => (c, h),
-                None => break,
-            };
-            hashmap.insert(combo, handler);
-        }
-
-        KeyHandlers { handlers: hashmap }
-    }
-
     pub fn key_combos(&self) -> Vec<&KeyCombo> {
-        self.handlers.keys().collect()
+        self.hashmap.keys().collect()
     }
 
-    pub fn get(&self, key_combo: &KeyCombo) -> Option<KeyHandler> {
-        self.handlers.get(key_combo).map(|rc| rc.clone())
+    pub fn get(&self, key_combo: &KeyCombo) -> Option<Command> {
+        self.hashmap.get(key_combo).map(|rc| rc.clone())
+    }
+}
+
+impl From<Vec<(Vec<ModKey>, Key, Command)>> for KeyHandlers {
+    fn from(handlers: Vec<(Vec<ModKey>, Key, Command)>) -> KeyHandlers {
+        let mut hashmap = HashMap::new();
+        for (modkeys, keysym, handler) in handlers {
+            hashmap.insert(KeyCombo::new(modkeys, keysym), handler);
+        }
+        KeyHandlers { hashmap }
     }
 }
