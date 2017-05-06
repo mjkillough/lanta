@@ -1,10 +1,10 @@
-use std::rc::Rc;
-use std::slice::Iter;
+use layout::{Layout, StackLayout, TiledLayout};
 
 use stack::Stack;
+use std::rc::Rc;
+use std::slice::Iter;
 use window::Window;
 use x::{Connection, WindowId};
-use layout::{Layout, TiledLayout, StackLayout};
 
 
 pub struct Group {

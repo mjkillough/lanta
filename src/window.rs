@@ -1,7 +1,8 @@
 use x::{Connection, WindowId};
 
 
-/// A trait implemented by any objects that allow control over a window on the screen.
+/// A trait implemented by any objects that allow control over a window on the
+/// screen.
 pub trait Window {
     fn connection(&self) -> &Connection;
     fn id(&self) -> &WindowId;

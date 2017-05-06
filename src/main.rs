@@ -3,11 +3,11 @@ extern crate x11;
 
 extern crate lanta;
 
-use std::process::Command;
-use std::rc::Rc;
 
 use lanta::{Config, RustWindowManager};
 use lanta::keys::{KeyCombo, KeyHandlers, ModKey};
+use std::process::Command;
+use std::rc::Rc;
 
 
 fn main() {

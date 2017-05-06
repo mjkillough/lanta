@@ -27,7 +27,8 @@ impl<T> Stack<T> {
             .position(p)
             .expect("No element in stack matches predicate");
         let element = self.vec.remove(position);
-        // We might have removed the focus element. A non-empty stack should always focus something.
+        // We might have removed the focus element. A non-empty stack should always
+        // focus something.
         self.ensure_focus();
         element
     }
@@ -109,10 +110,10 @@ impl<T> Stack<T> {
 #[cfg(test)]
 mod test {
 
-    use std::fmt::Debug;
-    use std::rc::Rc;
 
     use super::Stack;
+    use std::fmt::Debug;
+    use std::rc::Rc;
 
 
     #[test]

@@ -1,0 +1,6 @@
+normalize_comments = true
+reorder_imported_names = true
+reorder_imports = true
+use_try_shorthand = true
+where_density = "Tall"
+wrap_comments = true

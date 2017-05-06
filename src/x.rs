@@ -1,14 +1,15 @@
-use std;
-use std::fmt;
-use std::ffi;
-use std::slice;
-use std::os::raw::{c_int, c_char, c_long, c_uchar, c_uint, c_ulong, c_void};
-use std::ptr;
 
-use x11::xlib;
 
 use debug;
-use keys::{KeyHandlers, KeyCombo, ModKey};
+use keys::{KeyCombo, KeyHandlers, ModKey};
+use std;
+use std::ffi;
+use std::fmt;
+use std::os::raw::{c_char, c_int, c_long, c_uchar, c_uint, c_ulong, c_void};
+use std::ptr;
+use std::slice;
+
+use x11::xlib;
 
 
 /// A handle to an X Window.
@@ -76,21 +77,22 @@ impl Connection {
         unsafe { xlib::XInternAtom(display, ptr, 0) }
     }
 
-    /// Installs the Connection as a window manager, by registers for SubstructureNotify and
-    // SubstructureRedirect events on the root window. If there is already a window manager on the
-    /// display, then this will fail.
+    /// Installs the Connection as a window manager, by registers for
+    /// SubstructureNotify and SubstructureRedirect events on the root window.
+    /// If there is already a window manager on the display, then this will
+    /// fail.
     pub fn install_as_wm(&self) -> Result<(), String> {
         unsafe {
-            // It's tricky to get state from the error handler to here, so we install a special
-            // handler while becoming the WM that panics on error.
+            // It's tricky to get state from the error handler to here, so we install a
+            // special handler while becoming the WM that panics on error.
             xlib::XSetErrorHandler(Some(debug::error_handler_init));
             xlib::XSelectInput(self.display,
                                self.root.to_x(),
                                xlib::SubstructureNotifyMask | xlib::SubstructureRedirectMask);
             xlib::XSync(self.display, 0);
 
-            // If we get this far, then our error handler didn't panic. Set a more useful error
-            // handler.
+            // If we get this far, then our error handler didn't panic. Set a more useful
+            // error handler.
             xlib::XSetErrorHandler(Some(debug::error_handler));
         }
 
@@ -130,9 +132,10 @@ impl Connection {
         vec
     }
 
-    /// Queries the WM_PROTOCOLS property of a window, returning a list of the protocols that it
-    /// supports.
-    // TODO: Have this return a list of atoms, rather than a list of strings. (Perhaps we should
+    /// Queries the WM_PROTOCOLS property of a window, returning a list of the
+    /// protocols that it supports.
+    // TODO: Have this return a list of atoms, rather than a list of strings.
+    // (Perhaps we should
     // have a separate function to convert to a list of strings for debugging?)
     pub fn get_wm_protocols(&self, window_id: &WindowId) -> Vec<String> {
         let mut atoms: *mut c_ulong = ptr::null_mut();
@@ -179,8 +182,8 @@ impl Connection {
 
     /// Closes a window.
     ///
-    /// The window will be closed gracefully using the ICCCM WM_DELETE_WINDOW protocol if it is
-    /// supported.
+    /// The window will be closed gracefully using the ICCCM WM_DELETE_WINDOW
+    /// protocol if it is supported.
     pub fn close_window(&self, window_id: &WindowId) {
         let protocols = self.get_wm_protocols(window_id);
         let has_wm_delete_window = protocols.contains(&"WM_DELETE_WINDOW".to_owned());
@@ -338,9 +341,9 @@ impl<'a> Iterator for EventLoop<'a> {
                     xlib::ConfigureRequest => {
                         self.on_configure_request(xlib::XConfigureRequestEvent::from(event))
                     }
-                    // TODO: move most of these handlers up to the window manager. The only one
-                    // that out to stay here is the ConfigureRequest, as we're not going to do much
-                    // with it!
+                    // TODO: move most of these handlers up to the window manager. The
+                    // only one that out to stay here is the ConfigureRequest, as we're
+                    // not going to do much with it!
                     xlib::MapRequest => self.on_map_request(xlib::XMapRequestEvent::from(event)),
                     xlib::DestroyNotify => {
                         self.on_destroy_notify(xlib::XDestroyWindowEvent::from(event))

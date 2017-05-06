@@ -1,10 +1,11 @@
-use std::rc::Rc;
-use std::collections::HashMap;
-use std::os::raw::c_uint;
 
-use x11::xlib;
 
 use super::RustWindowManager;
+use std::collections::HashMap;
+use std::os::raw::c_uint;
+use std::rc::Rc;
+
+use x11::xlib;
 
 
 /// Represents a modifier key.
@@ -60,8 +61,10 @@ impl KeyCombo {
 }
 
 
-// XXX We need to use Rc in order to allow us to borrow RustWindowManager mutably to pass it to
-// handlers. However, using a Rc for an event handler sounds like a terrible idea - could it cause
+// XXX We need to use Rc in order to allow us to borrow RustWindowManager
+// mutably to pass it to
+// handlers. However, using a Rc for an event handler sounds like a terrible
+// idea - could it cause
 // UAF?
 pub type KeyHandler = Rc<Fn(&mut RustWindowManager)>;
 

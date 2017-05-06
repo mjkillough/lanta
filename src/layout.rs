@@ -1,4 +1,4 @@
-use groups::{GroupWindow, GroupIter};
+use groups::{GroupIter, GroupWindow};
 use window::Window;
 
 
