@@ -44,7 +44,8 @@ impl RustWindowManager {
         let connection = Rc::new(connection);
 
         let mut groups = Stack::new();
-        groups.push(Group::new("default", connection.clone()));
+        groups.push(Group::new("g1", connection.clone()));
+        groups.push(Group::new("g2", connection.clone()));
 
         Ok(RustWindowManager {
                connection: connection.clone(),
@@ -61,6 +62,13 @@ impl RustWindowManager {
 
     pub fn group_mut(&mut self) -> &mut Group {
         self.groups.focused_mut().expect("No active group!")
+    }
+
+    pub fn switch_group<'a, S>(&'a mut self, name: S) where S: Into<&'a str> {
+        let name = name.into();
+        self.group_mut().deactivate();
+        self.groups.focus(|group| group.name() == name);
+        self.group_mut().activate();
     }
 
     pub fn run_event_loop(&mut self) {
@@ -86,7 +94,19 @@ impl RustWindowManager {
     }
 
     fn on_destroy_notify(&mut self, window_id: WindowId) {
-        self.group_mut().remove_window(&window_id);
+        // Remove the window from whichever Group it is in.
+        let group_opt = self.groups
+            .iter_mut()
+            .find(|group| group.contains(&window_id));
+        match group_opt {
+            Some(group) => {
+                group.remove_window(&window_id);
+            }
+            None => {
+                error!("on_destroy_notify: window {} is not in any group",
+                       window_id)
+            }
+        }
     }
 
     fn on_key_press(&mut self, key: KeyCombo) {
@@ -132,4 +152,8 @@ pub fn spawn_command(command: Command) -> KeyHandler {
                 let mut command = mutex.lock().unwrap();
                 command.spawn().unwrap();
             })
+}
+
+pub fn switch_group(name: &'static str) -> KeyHandler {
+    Rc::new(move |wm| wm.switch_group(name))
 }

@@ -30,6 +30,10 @@ impl Group {
         }
     }
 
+    pub fn name(&self) -> &str {
+        &self.name
+    }
+
     fn layout(&mut self) {
         let (width, height) = self.connection
             .get_window_geometry(&self.connection.root_window_id());
@@ -48,8 +52,15 @@ impl Group {
             .map(|l| l.layout(width, height, focused, self.iter()));
     }
 
-    // pub fn activate
-    // pub fn deactivate
+    pub fn activate(&mut self) {
+        self.layout();
+    }
+
+    pub fn deactivate(&mut self) {
+        for window in self.iter() {
+            window.unmap();
+        }
+    }
 
     pub fn add_window(&mut self, window_id: WindowId) {
         self.stack.push(window_id);
@@ -60,6 +71,10 @@ impl Group {
         let removed = self.stack.remove(|w| w == window_id);
         self.layout();
         removed
+    }
+
+    pub fn contains(&self, window_id: &WindowId) -> bool {
+        self.stack.iter().any(|w| w == window_id)
     }
 
     pub fn focus(&mut self, window_id: &WindowId) {

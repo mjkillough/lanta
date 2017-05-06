@@ -26,7 +26,11 @@ fn main() {
                                      (KeyCombo::new(vec![ModKey::Mod4], x11::keysym::XK_p),
                                       lanta::spawn_command(Command::new("xterm"))),
                                      (KeyCombo::new(vec![ModKey::Mod4], x11::keysym::XK_b),
-                                      Rc::new(lanta::layout_next))]);
+                                      Rc::new(lanta::layout_next)),
+                                     (KeyCombo::new(vec![ModKey::Mod4], x11::keysym::XK_n),
+                                      lanta::switch_group("g1")),
+                                     (KeyCombo::new(vec![ModKey::Mod4], x11::keysym::XK_m),
+                                      lanta::switch_group("g2"))]);
 
     let config = Config { keys: keys };
 

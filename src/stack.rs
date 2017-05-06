@@ -1,4 +1,4 @@
-use std::slice::Iter;
+use std::slice::{Iter, IterMut};
 
 
 pub struct Stack<T> {
@@ -35,6 +35,10 @@ impl<T> Stack<T> {
 
     pub fn iter(&self) -> Iter<T> {
         self.vec.iter()
+    }
+
+    pub fn iter_mut(&mut self) -> IterMut<T> {
+        self.vec.iter_mut()
     }
 
     pub fn focused(&self) -> Option<&T> {
