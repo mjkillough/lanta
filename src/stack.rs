@@ -28,9 +28,18 @@ impl<T> Stack<T> {
             .position(p)
             .expect("No element in stack matches predicate");
         let element = self.vec.remove(position);
-        // We might have removed the focus element. A non-empty stack should always
-        // focus something.
-        self.ensure_focus();
+        // Focus might now be pointing at the wrong element. If we didn't remove the
+        // focused element, we need to do some simple house-keeping. If we did remove
+        // the focused element and it was the last element in the stack, then we want
+        // to point to the previous element. If it was not the last element, then do
+        // not alter the index: we'll naturally point to the next element.
+        self.focus = self.focus
+            .and_then(|idx| if self.vec.is_empty() { None } else { Some(idx) })
+            .map(|idx| if idx > position || (idx == position && idx == self.vec.len()) {
+                     idx - 1
+                 } else {
+                     idx
+                 });
         element
     }
 
@@ -43,11 +52,33 @@ impl<T> Stack<T> {
     }
 
     pub fn focused(&self) -> Option<&T> {
-        self.focus.and_then(|idx| self.vec.get(idx))
+        self.focus
+            .and_then(|idx| {
+                let item = self.vec.get(idx);
+                // `focus` should always point to a valid element of `vec`. If not, we've
+                // broken an invariant. Allow execution to continue, as it should be possible
+                // for the user to work around this in most cases.
+                if item.is_none() {
+                    error!("Stack's focus index ({}) is greater than it's length ({})",
+                           idx,
+                           self.vec.len());
+                }
+                item
+            })
     }
 
     pub fn focused_mut(&mut self) -> Option<&mut T> {
-        self.focus.and_then(move |idx| self.vec.get_mut(idx))
+        self.focus
+            .and_then(move |idx| {
+                let item = self.vec.get_mut(idx);
+                // `focus` should always point to a valid element of `vec`. If not, we've
+                // broken an invariant. Allow execution to continue, as it should be possible
+                // for the user to work around this in most cases.
+                if item.is_none() {
+                    error!("Stack's focus index ({}) is greater than it's length", idx);
+                }
+                item
+            })
     }
 
     /// Focuses the first element in the stack that matches the predicate.
@@ -154,6 +185,45 @@ mod test {
         stack.push(4);
         stack.remove(|v| v == &3);
         assert_eq!(stack.vec, vec![2, 4]);
+    }
+
+    #[test]
+    fn test_remove_updates_focus() {
+        let mut stack = Stack::<u8>::new();
+        stack.push(2);
+        stack.push(3);
+        stack.push(4);
+        stack.focus_next();
+        assert_eq!(stack.focused(), Some(&3));
+
+        // Remove element before focused element.
+        let mut stack1 = stack.clone();
+        stack1.remove(|v| v == &2);
+        assert_eq!(stack1.focused(), Some(&3));
+
+        // Remove focused element.
+        let mut stack2 = stack.clone();
+        stack2.remove(|v| v == &3);
+        assert_eq!(stack2.focused(), Some(&4));
+
+        // Remove element after focused element.
+        let mut stack3 = stack.clone();
+        stack3.remove(|v| v == &4);
+        assert_eq!(stack3.focused(), Some(&3));
+
+        // Remove focused element where it is also the final element.
+        let mut stack4 = stack.clone();
+        stack4.focus_next();
+        assert_eq!(stack4.focused(), Some(&4));
+        stack4.remove(|v| v == &4);
+        assert_eq!(stack4.focused(), Some(&3));
+
+        // Remove only element.
+        let mut stack5 = Stack::<u8>::new();
+        stack5.push(2);
+        assert_eq!(stack5.focused(), Some(&2));
+        stack5.remove(|v| v == &2);
+        assert_eq!(stack5.focus, None);
     }
 
     #[test]

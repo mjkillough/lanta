@@ -334,7 +334,6 @@ impl<'a> Iterator for EventLoop<'a> {
             unsafe {
                 let mut event = std::mem::zeroed();
                 xlib::XNextEvent(self.connection.display, &mut event);
-                debug!("Received event: {}", debug::xevent_to_str(&event));
 
                 let event = match event.get_type() {
                     xlib::ConfigureRequest => {

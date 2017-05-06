@@ -82,7 +82,7 @@ impl Group {
 
     pub fn remove_window(&mut self, window_id: &WindowId) -> WindowId {
         let removed = self.stack.remove(|w| w == window_id);
-        self.layout();
+        self.apply_focus_to_window();
         removed
     }
 
