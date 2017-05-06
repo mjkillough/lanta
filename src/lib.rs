@@ -19,6 +19,7 @@ pub mod x;
 
 use groups::{Group, GroupWindow};
 use keys::{KeyCombo, KeyHandler, KeyHandlers, ModKey};
+use stack::Stack;
 use window::Window;
 use x::{Connection, Event, WindowId};
 
@@ -33,7 +34,7 @@ pub struct RustWindowManager {
 
     config: Config,
 
-    group: Group,
+    groups: Stack<Group>,
 }
 
 impl RustWindowManager {
@@ -42,41 +43,24 @@ impl RustWindowManager {
         connection.install_as_wm()?;
         let connection = Rc::new(connection);
 
+        let mut groups = Stack::new();
+        groups.push(Group::new("default", connection.clone()));
+
         Ok(RustWindowManager {
                connection: connection.clone(),
 
                config: config,
 
-               group: Group::new(connection.clone()),
+               groups: groups,
            })
     }
 
-    pub fn get_focused(&mut self) -> Option<GroupWindow> {
-        self.group.get_focused()
+    pub fn group(&self) -> &Group {
+        self.groups.focused().expect("No active group!")
     }
 
-    pub fn focus_next(&mut self) {
-        self.group.focus_next();
-    }
-
-    pub fn focus_previous(&mut self) {
-        self.group.focus_previous();
-    }
-
-    pub fn shuffle_next(&mut self) {
-        self.group.shuffle_next();
-    }
-
-    pub fn shuffle_previous(&mut self) {
-        self.group.shuffle_previous();
-    }
-
-    pub fn layout_next(&mut self) {
-        self.group.layout_next();
-    }
-
-    pub fn layout_previous(&mut self) {
-        self.group.layout_previous();
+    pub fn group_mut(&mut self) -> &mut Group {
+        self.groups.focused_mut().expect("No active group!")
     }
 
     pub fn run_event_loop(&mut self) {
@@ -98,11 +82,11 @@ impl RustWindowManager {
             .register_window_events(&window_id, &self.config.keys);
         self.connection.map_window(&window_id);
 
-        self.group.add_window(window_id);
+        self.group_mut().add_window(window_id);
     }
 
     fn on_destroy_notify(&mut self, window_id: WindowId) {
-        self.group.remove_window(&window_id);
+        self.group_mut().remove_window(&window_id);
     }
 
     fn on_key_press(&mut self, key: KeyCombo) {
@@ -113,33 +97,33 @@ impl RustWindowManager {
     }
 
     fn on_enter_notify(&mut self, window_id: WindowId) {
-        self.group.focus(&window_id);
+        self.group_mut().focus(&window_id);
     }
 }
 
 
 pub fn close_window(wm: &mut RustWindowManager) {
-    wm.get_focused().map(|w| w.close());
+    wm.group_mut().get_focused().map(|w| w.close());
 }
 
 pub fn focus_next(wm: &mut RustWindowManager) {
-    wm.focus_next();
+    wm.group_mut().focus_next();
 }
 
 pub fn focus_previous(wm: &mut RustWindowManager) {
-    wm.focus_previous();
+    wm.group_mut().focus_previous();
 }
 
 pub fn shuffle_next(wm: &mut RustWindowManager) {
-    wm.shuffle_next();
+    wm.group_mut().shuffle_next();
 }
 
 pub fn shuffle_previous(wm: &mut RustWindowManager) {
-    wm.shuffle_previous();
+    wm.group_mut().shuffle_previous();
 }
 
 pub fn layout_next(wm: &mut RustWindowManager) {
-    wm.layout_next();
+    wm.group_mut().layout_next();
 }
 
 pub fn spawn_command(command: Command) -> KeyHandler {

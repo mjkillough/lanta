@@ -41,6 +41,10 @@ impl<T> Stack<T> {
         self.focus.and_then(|idx| self.vec.get(idx))
     }
 
+    pub fn focused_mut(&mut self) -> Option<&mut T> {
+        self.focus.and_then(move |idx| self.vec.get_mut(idx))
+    }
+
     /// Focuses the first element in the stack that matches the predicate.
     ///
     /// Panics if no element matches the predicate.

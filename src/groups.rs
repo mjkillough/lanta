@@ -8,18 +8,22 @@ use x::{Connection, WindowId};
 
 
 pub struct Group {
+    name: String,
     connection: Rc<Connection>,
     stack: Stack<WindowId>,
     layouts: Stack<Box<Layout>>,
 }
 
 impl Group {
-    pub fn new(connection: Rc<Connection>) -> Group {
+    pub fn new<S>(name: S, connection: Rc<Connection>) -> Group
+        where S: Into<String>
+    {
         let mut layouts = Stack::new();
         layouts.push(Box::new(StackLayout {}) as Box<Layout>);
         layouts.push(Box::new(TiledLayout {}) as Box<Layout>);
 
         Group {
+            name: name.into(),
             connection: connection,
             stack: Stack::new(),
             layouts: layouts,
