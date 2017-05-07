@@ -46,7 +46,17 @@ impl RustWindowManager {
                                                   group.build(connection.clone(), layouts.clone())
                                               })
                                          .collect::<Vec<Group>>());
+
+        // Stack guarantees that if it is non-empty, then something will be focused.
+        // This captures the case when we have no groups configured - useless in
+        // practise, but maybe there'll be some use for it in tests.
         if let Some(group) = groups.focused_mut() {
+            // Add all existing windows to the default group.
+            let existing_windows = connection.top_level_windows();
+            for window in existing_windows {
+                group.add_window(window);
+            }
+
             group.activate();
         }
 
