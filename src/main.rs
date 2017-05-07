@@ -16,7 +16,7 @@ use x11::keysym;
 fn main() {
     env_logger::init().unwrap();
 
-    let modkey = ModKey::Control;
+    let modkey = ModKey::Mod4;
     let shift = ModKey::Shift;
     let mut keys =
         vec![(vec![modkey], keysym::XK_w, cmd::lazy::close_focused_window()),
