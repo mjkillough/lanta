@@ -28,6 +28,7 @@ impl GroupBuilder {
         Group {
             name: self.name.clone(),
             connection: connection,
+            active: false,
             stack: Stack::new(),
             layouts: layouts_stack,
         }
@@ -38,6 +39,7 @@ impl GroupBuilder {
 pub struct Group {
     name: String,
     connection: Rc<Connection>,
+    active: bool,
     stack: Stack<WindowId>,
     layouts: Stack<Box<Layout>>,
 }
@@ -47,10 +49,32 @@ impl Group {
         &self.name
     }
 
-    fn layout(&mut self) {
+    pub fn activate(&mut self) {
+        self.active = true;
+        self.perform_layout();
+    }
+
+    pub fn deactivate(&mut self) {
+        for window in self.iter() {
+            window.unmap();
+        }
+        self.active = false;
+    }
+
+
+    fn perform_layout(&mut self) {
+        if !self.active {
+            return;
+        }
+
+        // Tell X to focus the focused window for this group.
+        self.stack
+            .focused()
+            .map(|window_id| self.connection.focus_window(&window_id));
+
+        // Allow the layout to map and position windows it cares about.
         let (width, height) = self.connection
             .get_window_geometry(&self.connection.root_window_id());
-
         let focused = self.stack
             .focused()
             .map(|window_id| {
@@ -59,30 +83,19 @@ impl Group {
                          window_id: &window_id,
                      }
                  });
-
         self.layouts
             .focused()
             .map(|l| l.layout(width, height, focused, self.iter()));
     }
 
-    pub fn activate(&mut self) {
-        self.layout();
-    }
-
-    pub fn deactivate(&mut self) {
-        for window in self.iter() {
-            window.unmap();
-        }
-    }
-
     pub fn add_window(&mut self, window_id: WindowId) {
         self.stack.push(window_id);
-        self.layout();
+        self.perform_layout();
     }
 
     pub fn remove_window(&mut self, window_id: &WindowId) -> WindowId {
         let removed = self.stack.remove(|w| w == window_id);
-        self.apply_focus_to_window();
+        self.perform_layout();
         removed
     }
 
@@ -92,7 +105,7 @@ impl Group {
 
     pub fn focus(&mut self, window_id: &WindowId) {
         self.stack.focus(|id| id == window_id);
-        self.apply_focus_to_window();
+        self.perform_layout();
     }
 
     fn iter<'a>(&'a self) -> GroupIter<'a> {
@@ -113,41 +126,34 @@ impl Group {
                  })
     }
 
-    fn apply_focus_to_window(&mut self) {
-        self.stack
-            .focused()
-            .map(|window_id| self.connection.focus_window(&window_id));
-        self.layout();
-    }
-
     pub fn focus_next(&mut self) {
         self.stack.focus_next();
-        self.apply_focus_to_window();
+        self.perform_layout();
     }
 
     pub fn focus_previous(&mut self) {
         self.stack.focus_previous();
-        self.apply_focus_to_window();
+        self.perform_layout();
     }
 
     pub fn shuffle_next(&mut self) {
         self.stack.shuffle_next();
-        self.layout();
+        self.perform_layout();
     }
 
     pub fn shuffle_previous(&mut self) {
         self.stack.shuffle_previous();
-        self.layout();
+        self.perform_layout();
     }
 
     pub fn layout_next(&mut self) {
         self.layouts.focus_next();
-        self.layout();
+        self.perform_layout();
     }
 
     pub fn layout_previous(&mut self) {
         self.layouts.focus_previous();
-        self.layout();
+        self.perform_layout();
     }
 }
 
