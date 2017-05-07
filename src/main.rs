@@ -16,15 +16,20 @@ use x11::keysym;
 fn main() {
     env_logger::init().unwrap();
 
-    let modkey = ModKey::Mod4;
+    let modkey = ModKey::Control;
     let mut keys =
         vec![(vec![modkey], keysym::XK_t, cmd::lazy::close_focused_window()),
              (vec![modkey], keysym::XK_y, cmd::lazy::focus_next()),
              (vec![modkey], keysym::XK_u, cmd::lazy::focus_previous()),
              (vec![modkey], keysym::XK_i, cmd::lazy::shuffle_next()),
              (vec![modkey], keysym::XK_o, cmd::lazy::shuffle_previous()),
-             (vec![modkey], keysym::XK_p, cmd::lazy::spawn_command(Command::new("xterm"))),
-             (vec![modkey], keysym::XK_b, cmd::lazy::layout_next())];
+             (vec![modkey], keysym::XK_b, cmd::lazy::layout_next()),
+             (vec![modkey], keysym::XK_q, cmd::lazy::spawn(Command::new("change-wallpaper"))),
+             (vec![modkey], keysym::XK_Return, cmd::lazy::spawn(Command::new("urxvt"))),
+             (vec![modkey], keysym::XK_c, cmd::lazy::spawn(Command::new("chrome"))),
+             (vec![modkey], keysym::XK_v, cmd::lazy::spawn(Command::new("code")))];
+
+
 
     let layouts = vec![StackLayout::new("stack".to_owned()),
                        TiledLayout::new("tiled".to_owned())];
