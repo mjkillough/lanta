@@ -8,8 +8,11 @@ use cmd::Command;
 
 /// Represents a modifier key.
 #[allow(dead_code)]
-#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum ModKey {
+    Shift,
+    Lock,
+    Control,
     Mod1,
     Mod2,
     Mod3,
@@ -21,11 +24,15 @@ type ModMask = c_uint;
 
 impl ModKey {
     pub fn mask_all() -> ModMask {
-        xlib::Mod1Mask | xlib::Mod2Mask | xlib::Mod3Mask | xlib::Mod4Mask | xlib::Mod5Mask
+        xlib::ShiftMask | xlib::LockMask | xlib::ControlMask | xlib::Mod1Mask |
+        xlib::Mod2Mask | xlib::Mod3Mask | xlib::Mod4Mask | xlib::Mod5Mask
     }
 
     fn mask(&self) -> ModMask {
         match self {
+            &ModKey::Shift => xlib::ShiftMask,
+            &ModKey::Lock => xlib::LockMask,
+            &ModKey::Control => xlib::ControlMask,
             &ModKey::Mod1 => xlib::Mod1Mask,
             &ModKey::Mod2 => xlib::Mod2Mask,
             &ModKey::Mod3 => xlib::Mod3Mask,

@@ -61,7 +61,6 @@ impl Group {
         self.active = false;
     }
 
-
     fn perform_layout(&mut self) {
         if !self.active {
             return;
