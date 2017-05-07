@@ -18,22 +18,31 @@ pub trait Window {
 
     /// Maps the window.
     fn map(&self) {
+        debug!("Mapping window: {}", self.id());
         self.connection().map_window(self.id());
     }
 
     /// Unmaps the window.
     fn unmap(&self) {
+        debug!("Unmapping window: {}", self.id());
         self.connection().unmap_window(self.id());
     }
 
     /// Sets the window's position and size.
     fn configure(&self, x: i32, y: i32, width: i32, height: i32) {
+        debug!("Configuring window: {} (x={}, y={}, width={}, height={})",
+               self.id(),
+               x,
+               y,
+               width,
+               height);
         self.connection()
             .configure_window(self.id(), x, y, width, height);
     }
 
     /// Closes the window.
     fn close(&self) {
+        info!("Closing window: {}", self.id());
         self.connection().close_window(&self.id());
     }
 }

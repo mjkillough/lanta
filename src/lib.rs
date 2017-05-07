@@ -41,11 +41,11 @@ impl RustWindowManager {
         connection.install_as_wm(&keys)?;
 
         let mut groups = Stack::from(groups
-                                     .into_iter()
-                                     .map(|group: GroupBuilder| {
-                                              group.build(connection.clone(), layouts.clone())
-                                          })
-                                     .collect::<Vec<Group>>());
+                                         .into_iter()
+                                         .map(|group: GroupBuilder| {
+                                                  group.build(connection.clone(), layouts.clone())
+                                              })
+                                         .collect::<Vec<Group>>());
         if let Some(group) = groups.focused_mut() {
             group.activate();
         }

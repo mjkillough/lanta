@@ -394,9 +394,7 @@ impl<'a> EventLoop<'a> {
     fn on_key_press(&self, event: xlib::XKeyPressedEvent) -> Option<Event> {
         let mod_mask = event.state & ModKey::mask_all();
         let keysym = unsafe {
-            xlib::XKeycodeToKeysym(self.connection.display,
-                                   event.keycode as c_uchar,
-                                   0)
+            xlib::XKeycodeToKeysym(self.connection.display, event.keycode as c_uchar, 0)
         } as c_uint;
         let key = KeyCombo {
             mod_mask: mod_mask,

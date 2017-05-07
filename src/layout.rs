@@ -1,3 +1,5 @@
+use std::fmt;
+
 use groups::{GroupIter, GroupWindow};
 use window::Window;
 
@@ -23,6 +25,12 @@ pub trait Layout: LayoutClone {
 impl Clone for Box<Layout> {
     fn clone(&self) -> Box<Layout> {
         self.clone_box()
+    }
+}
+
+impl fmt::Debug for Layout {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "Layout {{ \"{}\" }}", self.name())
     }
 }
 
