@@ -15,9 +15,10 @@ impl<T> Stack<T> {
         }
     }
 
+    /// Adds an element to the stack (at the end) and focuses it.
     pub fn push(&mut self, value: T) {
         self.vec.push(value);
-        self.ensure_focus();
+        self.focus = Some(self.vec.len() - 1);
     }
 
     pub fn remove<P>(&mut self, p: P) -> T
@@ -186,6 +187,9 @@ mod test {
         let mut stack = Stack::<u8>::new();
         stack.push(2);
         assert_eq!(stack.vec, vec![2]);
+        assert_eq!(stack.focused(), Some(&2));
+        stack.push(3);
+        assert_eq!(stack.focused(), Some(&3));
     }
 
     #[test]
@@ -204,7 +208,7 @@ mod test {
         stack.push(2);
         stack.push(3);
         stack.push(4);
-        stack.focus_next();
+        stack.focus_previous();
         assert_eq!(stack.focused(), Some(&3));
 
         // Remove element before focused element.
@@ -242,12 +246,12 @@ mod test {
         let mut stack = Stack::<u8>::new();
         stack.push(2);
         stack.push(3);
-        assert_eq!(stack.focused(), Some(&2));
+        assert_eq!(stack.focused(), Some(&3));
 
         let element = stack.remove_focused();
-        assert_eq!(element, Some(2));
-        assert_eq!(stack.focused(), Some(&3));
-        assert_eq!(stack.vec, vec![3]);
+        assert_eq!(element, Some(3));
+        assert_eq!(stack.focused(), Some(&2));
+        assert_eq!(stack.vec, vec![2]);
     }
 
     #[test]
@@ -278,11 +282,11 @@ mod test {
         assert_eq!(stack.focused(), None);
         stack.push(2);
         stack.push(3);
-        assert_eq!(stack.focused(), Some(&2));
-        stack.remove(|v| v == &2);
-        // A non-empty stack should always have something focused.
         assert_eq!(stack.focused(), Some(&3));
         stack.remove(|v| v == &3);
+        // A non-empty stack should always have something focused.
+        assert_eq!(stack.focused(), Some(&2));
+        stack.remove(|v| v == &2);
         assert_eq!(stack.focused(), None);
     }
 
@@ -292,14 +296,14 @@ mod test {
         stack.push(2);
         stack.push(3);
         stack.push(4);
-        assert_eq!(stack.focused(), Some(&2));
+        assert_eq!(stack.focused(), Some(&4));
 
+        stack.focus_next();
+        assert_eq!(stack.focused(), Some(&2));
         stack.focus_next();
         assert_eq!(stack.focused(), Some(&3));
         stack.focus_next();
         assert_eq!(stack.focused(), Some(&4));
-        stack.focus_next();
-        assert_eq!(stack.focused(), Some(&2));
     }
 
     #[test]
@@ -308,14 +312,14 @@ mod test {
         stack.push(2);
         stack.push(3);
         stack.push(4);
-        assert_eq!(stack.focused(), Some(&2));
-
-        stack.focus_previous();
         assert_eq!(stack.focused(), Some(&4));
+
         stack.focus_previous();
         assert_eq!(stack.focused(), Some(&3));
         stack.focus_previous();
         assert_eq!(stack.focused(), Some(&2));
+        stack.focus_previous();
+        assert_eq!(stack.focused(), Some(&4));
     }
 
     #[test]
@@ -324,13 +328,13 @@ mod test {
         stack.push(2);
         stack.push(3);
         stack.push(4);
-        assert_eq!(stack.focused(), Some(&2));
+        assert_eq!(stack.focused(), Some(&4));
 
         assert_eq!(stack.vec, vec![2, 3, 4]);
         stack.shuffle_next();
-        assert_eq!(stack.vec, vec![3, 2, 4]);
+        assert_eq!(stack.vec, vec![4, 2, 3]);
         stack.shuffle_next();
-        assert_eq!(stack.vec, vec![3, 4, 2]);
+        assert_eq!(stack.vec, vec![2, 4, 3]);
         stack.shuffle_next();
         assert_eq!(stack.vec, vec![2, 3, 4]);
     }
@@ -341,13 +345,13 @@ mod test {
         stack.push(2);
         stack.push(3);
         stack.push(4);
-        assert_eq!(stack.focused(), Some(&2));
+        assert_eq!(stack.focused(), Some(&4));
 
         assert_eq!(stack.vec, vec![2, 3, 4]);
         stack.shuffle_previous();
-        assert_eq!(stack.vec, vec![3, 4, 2]);
+        assert_eq!(stack.vec, vec![2, 4, 3]);
         stack.shuffle_previous();
-        assert_eq!(stack.vec, vec![3, 2, 4]);
+        assert_eq!(stack.vec, vec![4, 2, 3]);
         stack.shuffle_previous();
         assert_eq!(stack.vec, vec![2, 3, 4]);
     }
