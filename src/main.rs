@@ -17,24 +17,27 @@ fn main() {
     env_logger::init().unwrap();
 
     let modkey = ModKey::Control;
+    let shift = ModKey::Shift;
     let mut keys =
-        vec![(vec![modkey], keysym::XK_t, cmd::lazy::close_focused_window()),
-             (vec![modkey], keysym::XK_y, cmd::lazy::focus_next()),
-             (vec![modkey], keysym::XK_u, cmd::lazy::focus_previous()),
-             (vec![modkey], keysym::XK_i, cmd::lazy::shuffle_next()),
-             (vec![modkey], keysym::XK_o, cmd::lazy::shuffle_previous()),
-             (vec![modkey], keysym::XK_b, cmd::lazy::layout_next()),
+        vec![(vec![modkey], keysym::XK_w, cmd::lazy::close_focused_window()),
+             (vec![modkey], keysym::XK_j, cmd::lazy::focus_next()),
+             (vec![modkey], keysym::XK_k, cmd::lazy::focus_previous()),
+             (vec![modkey, shift], keysym::XK_j, cmd::lazy::shuffle_next()),
+             (vec![modkey, shift], keysym::XK_k, cmd::lazy::shuffle_previous()),
+             (vec![modkey], keysym::XK_Tab, cmd::lazy::layout_next()),
              (vec![modkey], keysym::XK_q, cmd::lazy::spawn(Command::new("change-wallpaper"))),
              (vec![modkey], keysym::XK_Return, cmd::lazy::spawn(Command::new("urxvt"))),
              (vec![modkey], keysym::XK_c, cmd::lazy::spawn(Command::new("chrome"))),
              (vec![modkey], keysym::XK_v, cmd::lazy::spawn(Command::new("code")))];
 
 
-
     let layouts = vec![StackLayout::new("stack".to_owned()),
                        TiledLayout::new("tiled".to_owned())];
 
-    let group_metadata = vec![(keysym::XK_n, "g1", "stack"), (keysym::XK_m, "g2", "tiled")];
+    let group_metadata = vec![(keysym::XK_a, "chrome", "stack"),
+                              (keysym::XK_s, "code", "stack"),
+                              (keysym::XK_d, "term", "tiled"),
+                              (keysym::XK_f, "misc", "tiled")];
     let groups: Vec<GroupBuilder> = group_metadata
         .into_iter()
         .map(|(key, name, default_layout_name)| {

@@ -68,11 +68,6 @@ impl Group {
             return;
         }
 
-        // Tell X to focus the focused window for this group.
-        self.stack
-            .focused()
-            .map(|window_id| self.connection.focus_window(&window_id));
-
         // Allow the layout to map and position windows it cares about.
         let (width, height) = self.connection
             .get_window_geometry(&self.connection.root_window_id());
@@ -87,6 +82,11 @@ impl Group {
         self.layouts
             .focused()
             .map(|l| l.layout(width, height, focused, self.iter()));
+
+        // Tell X to focus the focused window for this group.
+        self.stack
+            .focused()
+            .map(|window_id| self.connection.focus_window(&window_id));
     }
 
     pub fn add_window(&mut self, window_id: WindowId) {
