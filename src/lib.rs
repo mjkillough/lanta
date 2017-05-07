@@ -69,6 +69,37 @@ impl RustWindowManager {
         self.group_mut().activate();
     }
 
+    /// Move the focused window from the active group to another named group.
+    ///
+    /// If the other named group does not exist, then the window is
+    /// (unfortunately) lost.
+    pub fn move_focused_to_group<'a, S>(&'a mut self, name: S)
+        where S: Into<&'a str>
+    {
+        let name = name.into();
+
+        // If the group is currently active, then do nothing. This avoids flicker as we
+        // unmap/remap.
+        if name == self.group().name() {
+            return;
+        }
+
+        let removed = self.group_mut().remove_focused();
+        let new_group_opt = self.groups
+            .iter_mut()
+            .find(|group| group.name() == name);
+        match new_group_opt {
+            Some(new_group) => {
+                removed.map(|window| new_group.add_window(window));
+            }
+            None => {
+                // It would be nice to put the window back in its group (or avoid taking it out
+                // of its group until we've checked the new group exists), but it's difficult
+                // to do this while keeping the borrow checker happy.
+                error!("Moved window to non-existent group: {}", name);
+            }
+        }
+    }
 
     pub fn run_event_loop(&mut self) {
         let event_loop_connection = self.connection.clone();

@@ -98,6 +98,12 @@ impl Group {
         removed
     }
 
+    pub fn remove_focused(&mut self) -> Option<WindowId> {
+        let removed = self.stack.remove_focused();
+        self.perform_layout();
+        removed.map(|window| { self.connection.unmap_window(&window); window })
+    }
+
     pub fn contains(&self, window_id: &WindowId) -> bool {
         self.stack.iter().any(|w| w == window_id)
     }

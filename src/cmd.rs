@@ -65,4 +65,9 @@ pub mod lazy {
     pub fn switch_group(name: &'static str) -> Command {
         Rc::new(move |wm| wm.switch_group(name))
     }
+
+    /// Moves the focused window on the active group to another group.
+    pub fn move_window_to_group(name: &'static str) -> Command {
+        Rc::new(move |wm| wm.move_focused_to_group(name))
+    }
 }

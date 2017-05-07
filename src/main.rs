@@ -34,6 +34,9 @@ fn main() {
         .into_iter()
         .map(|(key, name, default_layout_name)| {
                  keys.push((vec![modkey], key, cmd::lazy::switch_group(name)));
+                 keys.push((vec![modkey, ModKey::Shift],
+                            key,
+                            cmd::lazy::move_window_to_group(name)));
 
                  GroupBuilder::new(name.to_owned(), default_layout_name.to_owned())
              })

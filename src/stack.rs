@@ -28,19 +28,30 @@ impl<T> Stack<T> {
             .position(p)
             .expect("No element in stack matches predicate");
         let element = self.vec.remove(position);
-        // Focus might now be pointing at the wrong element. If we didn't remove the
-        // focused element, we need to do some simple house-keeping. If we did remove
-        // the focused element and it was the last element in the stack, then we want
-        // to point to the previous element. If it was not the last element, then do
-        // not alter the index: we'll naturally point to the next element.
+        // Focus might now be pointing at the wrong element. If we
+        self.fix_focus_after_removal(position);
+        element
+    }
+
+    /// Removes the focused element (if any) and returns it.
+    pub fn remove_focused(&mut self) -> Option<T> {
+        let element = self.focus.map(|idx| self.vec.remove(idx));
+        if let Some(removed_idx) = self.focus {
+            self.fix_focus_after_removal(removed_idx);
+        }
+        element
+    }
+
+    /// Updates the focus index into the vector, as it may be pointing at the
+    /// wrong element after a removal.
+    fn fix_focus_after_removal(&mut self, removed_idx: usize) {
         self.focus = self.focus
             .and_then(|idx| if self.vec.is_empty() { None } else { Some(idx) })
-            .map(|idx| if idx > position || (idx == position && idx == self.vec.len()) {
+            .map(|idx| if idx > removed_idx || (idx == removed_idx && idx == self.vec.len()) {
                      idx - 1
                  } else {
                      idx
                  });
-        element
     }
 
     pub fn iter(&self) -> Iter<T> {
@@ -224,6 +235,28 @@ mod test {
         assert_eq!(stack5.focused(), Some(&2));
         stack5.remove(|v| v == &2);
         assert_eq!(stack5.focus, None);
+    }
+
+    #[test]
+    fn test_remove_focused() {
+        let mut stack = Stack::<u8>::new();
+        stack.push(2);
+        stack.push(3);
+        assert_eq!(stack.focused(), Some(&2));
+
+        let element = stack.remove_focused();
+        assert_eq!(element, Some(2));
+        assert_eq!(stack.focused(), Some(&3));
+        assert_eq!(stack.vec, vec![3]);
+    }
+
+    #[test]
+    fn test_remove_focused_when_no_focus() {
+        let mut stack = Stack::<u8>::new();
+        assert_eq!(stack.focused(), None);
+        let element = stack.remove_focused();
+        assert_eq!(element, None);
+        assert_eq!(stack.focused(), None);
     }
 
     #[test]
