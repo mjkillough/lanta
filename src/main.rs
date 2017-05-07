@@ -1,5 +1,10 @@
-extern crate env_logger;
+extern crate fern;
+#[macro_use]
+extern crate log;
+extern crate time;
 extern crate x11;
+extern crate xdg;
+
 
 extern crate lanta;
 
@@ -14,7 +19,21 @@ use x11::keysym;
 
 
 fn main() {
-    env_logger::init().unwrap();
+    let xdg_dirs =
+        xdg::BaseDirectories::with_prefix("lanta").expect("Could not create xdg BaseDirectories");
+    let log_path = xdg_dirs.place_data_file("lanta.log").expect("Could not create log file");
+
+    let logger_config = fern::DispatchConfig {
+        format: Box::new(|msg: &str, level: &log::LogLevel, _location: &log::LogLocation| {
+                             format!("[{}] [{}] {}", time::now().rfc3339(), level, msg)
+                         }),
+        output: vec![fern::OutputConfig::stdout(),
+                     fern::OutputConfig::file(&log_path)],
+        level: log::LogLevelFilter::Trace,
+    };
+    if let Err(e) = fern::init_global_logger(logger_config, log::LogLevelFilter::Trace) {
+        panic!("Failed to initialize global logger: {}", e);
+    }
 
     let modkey = ModKey::Mod4;
     let shift = ModKey::Shift;
@@ -29,7 +48,6 @@ fn main() {
              (vec![modkey], keysym::XK_Return, cmd::lazy::spawn(Command::new("urxvt"))),
              (vec![modkey], keysym::XK_c, cmd::lazy::spawn(Command::new("chrome"))),
              (vec![modkey], keysym::XK_v, cmd::lazy::spawn(Command::new("code")))];
-
 
     let layouts = vec![StackLayout::new("stack".to_owned()),
                        TiledLayout::new("tiled".to_owned())];
@@ -51,5 +69,6 @@ fn main() {
         .collect();
 
     let mut wm = RustWindowManager::new(keys, groups, layouts).unwrap();
+    info!("Started WM, entering event loop.");
     wm.run_event_loop();
 }
