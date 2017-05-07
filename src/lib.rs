@@ -40,15 +40,20 @@ impl RustWindowManager {
         let connection = Rc::new(Connection::connect()?);
         connection.install_as_wm(&keys)?;
 
-        let groups: Vec<Group> = groups
-            .into_iter()
-            .map(|group: GroupBuilder| group.build(connection.clone(), layouts.clone()))
-            .collect();
+        let mut groups = Stack::from(groups
+                                     .into_iter()
+                                     .map(|group: GroupBuilder| {
+                                              group.build(connection.clone(), layouts.clone())
+                                          })
+                                     .collect::<Vec<Group>>());
+        if let Some(group) = groups.focused_mut() {
+            group.activate();
+        }
 
         Ok(RustWindowManager {
                connection: connection.clone(),
                keys: keys,
-               groups: Stack::from(groups),
+               groups: groups,
            })
     }
 
