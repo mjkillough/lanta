@@ -348,7 +348,10 @@ impl<'a> Iterator for EventLoop<'a> {
                     }
                     xlib::KeyPress => self.on_key_press(xlib::XKeyPressedEvent::from(event)),
                     xlib::EnterNotify => self.on_enter_notify(xlib::XEnterWindowEvent::from(event)),
-                    _ => None,
+                    _ => {
+                        debug!("Unhandled event: {}", debug::xevent_to_str(&event));
+                        None
+                    }
                 };
 
                 if let Some(event) = event {
