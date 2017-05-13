@@ -15,6 +15,11 @@ impl<T> Stack<T> {
         }
     }
 
+    /// Returns the number of elements in the stack.
+    pub fn len(&self) -> usize {
+        self.vec.len()
+    }
+
     /// Adds an element to the stack (at the end) and focuses it.
     pub fn push(&mut self, value: T) {
         self.vec.push(value);

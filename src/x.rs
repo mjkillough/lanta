@@ -1,5 +1,5 @@
 use std;
-use std::ffi;
+use std::ffi::{CStr, CString};
 use std::fmt;
 use std::os::raw::{c_char, c_int, c_long, c_uchar, c_uint, c_ulong, c_void};
 use std::ptr;
@@ -9,6 +9,8 @@ use x11::xlib;
 
 use debug;
 use keys::{KeyCombo, KeyHandlers, ModKey};
+use groups::Group;
+use stack::Stack;
 
 
 /// A handle to an X Window.
@@ -32,6 +34,9 @@ impl fmt::Display for WindowId {
 struct InternedAtoms {
     WM_DELETE_WINDOW: xlib::Atom,
     WM_PROTOCOLS: xlib::Atom,
+    _NET_NUMBER_OF_DESKTOPS: xlib::Atom,
+    _NET_CURRENT_DESKTOP: xlib::Atom,
+    _NET_DESKTOP_NAMES: xlib::Atom,
 }
 
 pub struct Connection {
@@ -64,6 +69,9 @@ impl Connection {
                atoms: InternedAtoms {
                    WM_PROTOCOLS: Self::intern_atom(display, "WM_PROTOCOLS"),
                    WM_DELETE_WINDOW: Self::intern_atom(display, "WM_DELETE_WINDOW"),
+                   _NET_NUMBER_OF_DESKTOPS: Self::intern_atom(display, "_NET_NUMBER_OF_DESKTOPS"),
+                   _NET_CURRENT_DESKTOP: Self::intern_atom(display, "_NET_CURRENT_DESKTOP"),
+                   _NET_DESKTOP_NAMES: Self::intern_atom(display, "_NET_DESKTOP_NAMES"),
                },
            })
     }
@@ -71,7 +79,7 @@ impl Connection {
     /// Returns the Atom identifier associated with the atom_name str.
     fn intern_atom(display: *mut xlib::Display, atom_name: &str) -> xlib::Atom {
         // Note: the CString is bound to a variable to ensure adequate lifetime.
-        let cstring = ffi::CString::new(atom_name).unwrap();
+        let cstring = CString::new(atom_name).unwrap();
         let ptr = cstring.as_ptr() as *const c_char;
         unsafe { xlib::XInternAtom(display, ptr, 0) }
     }
@@ -103,6 +111,65 @@ impl Connection {
     /// Returns the ID of the root window.
     pub fn root_window_id(&self) -> &WindowId {
         &self.root
+    }
+
+    fn set_property_cardinal(&self, window: &WindowId, atom: xlib::Atom, value: u32) {
+        let addr = (&value as *const u32) as *const c_uchar;
+        unsafe {
+            xlib::XChangeProperty(self.display,
+                                  window.to_x(),
+                                  atom,
+                                  xlib::XA_CARDINAL,
+                                  32,
+                                  xlib::PropModeReplace,
+                                  addr,
+                                  1);
+        }
+    }
+
+    fn set_property_string_list(&self, window: &WindowId, atom: xlib::Atom, strs: &[&str]) {
+        let len = strs.iter().fold(0, |acc, s| acc + s.len() + 1);
+        let mut buf: Vec<u8> = Vec::with_capacity(len);
+        for s in strs {
+            buf.append(&mut s.as_bytes().to_vec());
+            buf.push(0);
+        }
+        unsafe {
+            xlib::XChangeProperty(self.display,
+                                  window.to_x(),
+                                  atom,
+                                  xlib::XA_STRING,
+                                  8,
+                                  xlib::PropModeReplace,
+                                  buf.as_ptr() as *const c_uchar,
+                                  buf.len() as i32);
+        }
+    }
+
+    pub fn update_ewmh_desktops(&self, groups: &Stack<Group>) {
+        let group_names: Vec<&str> = groups.iter().map(|g| g.name()).collect();
+        self.set_property_string_list(&self.root, self.atoms._NET_DESKTOP_NAMES, &group_names);
+        self.set_property_cardinal(&self.root,
+                                   self.atoms._NET_NUMBER_OF_DESKTOPS,
+                                   groups.len() as u32);
+
+        // Matching the current group on name isn't perfect, but it's good enough for
+        // EWMH.
+        match groups.focused() {
+            Some(focused_group) => {
+                match groups
+                          .iter()
+                          .position(|group| group.name() == focused_group.name()) {
+                    Some(focused_group_index) => {
+                        self.set_property_cardinal(&self.root,
+                                                   self.atoms._NET_CURRENT_DESKTOP,
+                                                   focused_group_index as u32);
+                    }
+                    None => error!("Invariant: active group not found in group stack"),
+                }
+            }
+            None => error!("Invariant: no active group"),
+        };
     }
 
     pub fn top_level_windows(&self) -> Vec<WindowId> {
@@ -160,7 +227,7 @@ impl Connection {
             pointers
                 .iter()
                 .map(|buffer| {
-                         ffi::CStr::from_ptr(*buffer)
+                         CStr::from_ptr(*buffer)
                              .to_str()
                              .unwrap()
                              .to_owned()

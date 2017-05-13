@@ -60,6 +60,8 @@ impl RustWindowManager {
             group.activate();
         }
 
+        connection.update_ewmh_desktops(&groups);
+
         Ok(RustWindowManager {
                connection: connection.clone(),
                keys: keys,
@@ -82,6 +84,7 @@ impl RustWindowManager {
         self.group_mut().deactivate();
         self.groups.focus(|group| group.name() == name);
         self.group_mut().activate();
+        self.connection.update_ewmh_desktops(&self.groups);
     }
 
     /// Move the focused window from the active group to another named group.
