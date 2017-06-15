@@ -27,14 +27,38 @@ impl fmt::Display for WindowId {
 }
 
 
-#[allow(non_snake_case)]
-struct InternedAtoms {
-    WM_DELETE_WINDOW: xcb::Atom,
-    WM_PROTOCOLS: xcb::Atom,
-    _NET_NUMBER_OF_DESKTOPS: xcb::Atom,
-    _NET_CURRENT_DESKTOP: xcb::Atom,
-    _NET_DESKTOP_NAMES: xcb::Atom,
+macro_rules! atoms {
+    ( $( $name:ident ),+ ) => {
+        #[allow(non_snake_case)]
+        struct InternedAtoms {
+            $(
+                pub $name: xcb::Atom
+            ),*
+        }
+
+        impl InternedAtoms {
+            pub fn new(conn: &xcb::Connection) -> Result<InternedAtoms, xcb::GenericError> {
+                Ok(InternedAtoms {
+                    $(
+                        $name: Connection::intern_atom(conn, stringify!($atom))?
+                    ),*
+                })
+            }
+        }
+    };
+    // Allow trailing comma:
+    ( $( $name:ident ),+ , ) => (atoms!($( $name ),+);)
 }
+
+
+atoms!(
+    WM_DELETE_WINDOW,
+    WM_PROTOCOLS,
+    _NET_NUMBER_OF_DESKTOPS,
+    _NET_CURRENT_DESKTOP,
+    _NET_DESKTOP_NAMES,
+);
+
 
 pub struct Connection {
     conn: ewmh::Connection,
@@ -55,13 +79,7 @@ impl Connection {
             .ok_or("Invalid screen")?
             .root();
 
-        let atoms = InternedAtoms {
-            WM_PROTOCOLS: Self::intern_atom(&conn, "WM_PROTOCOLS").unwrap(),
-            WM_DELETE_WINDOW: Self::intern_atom(&conn, "WM_DELETE_WINDOW").unwrap(),
-            _NET_NUMBER_OF_DESKTOPS: Self::intern_atom(&conn, "_NET_NUMBER_OF_DESKTOPS").unwrap(),
-            _NET_CURRENT_DESKTOP: Self::intern_atom(&conn, "_NET_CURRENT_DESKTOP").unwrap(),
-            _NET_DESKTOP_NAMES: Self::intern_atom(&conn, "_NET_DESKTOP_NAMES").unwrap(),
-        };
+        let atoms = InternedAtoms::new(&conn).or(Err("Failed to intern atoms"))?;
 
         Ok(Connection {
             conn,
