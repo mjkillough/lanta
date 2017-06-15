@@ -69,24 +69,23 @@ impl Group {
         }
 
         // Allow the layout to map and position windows it cares about.
-        let (width, height) = self.connection
-            .get_window_geometry(&self.connection.root_window_id());
-        let focused = self.stack
-            .focused()
-            .map(|window_id| {
-                     GroupWindow {
-                         connection: &self.connection,
-                         window_id: &window_id,
-                     }
-                 });
-        self.layouts
-            .focused()
-            .map(|l| l.layout(width, height, focused, self.iter()));
+        let (width, height) = self.connection.get_window_geometry(
+            &self.connection.root_window_id(),
+        );
+        let focused = self.stack.focused().map(|window_id| {
+            GroupWindow {
+                connection: &self.connection,
+                window_id: &window_id,
+            }
+        });
+        self.layouts.focused().map(|l| {
+            l.layout(width, height, focused, self.iter())
+        });
 
         // Tell X to focus the focused window for this group.
-        self.stack
-            .focused()
-            .map(|window_id| self.connection.focus_window(&window_id));
+        self.stack.focused().map(|window_id| {
+            self.connection.focus_window(&window_id)
+        });
     }
 
     pub fn add_window(&mut self, window_id: WindowId) {
@@ -103,15 +102,17 @@ impl Group {
     }
 
     pub fn remove_focused(&mut self) -> Option<WindowId> {
-        info!("Removing focused window from group {}: {:?}",
-              self.name(),
-              self.stack.focused());
+        info!(
+            "Removing focused window from group {}: {:?}",
+            self.name(),
+            self.stack.focused()
+        );
         let removed = self.stack.remove_focused();
         self.perform_layout();
         removed.map(|window| {
-                        self.connection.unmap_window(&window);
-                        window
-                    })
+            self.connection.unmap_window(&window);
+            window
+        })
     }
 
     pub fn contains(&self, window_id: &WindowId) -> bool {
@@ -132,61 +133,71 @@ impl Group {
     }
 
     pub fn get_focused<'a>(&'a self) -> Option<GroupWindow<'a>> {
-        self.stack
-            .focused()
-            .map(move |ref id| {
-                     GroupWindow {
-                         connection: &self.connection,
-                         window_id: &id,
-                     }
-                 })
+        self.stack.focused().map(move |ref id| {
+            GroupWindow {
+                connection: &self.connection,
+                window_id: &id,
+            }
+        })
     }
 
     pub fn focus_next(&mut self) {
         self.stack.focus_next();
-        info!("Focusing next window in group {}: {:?}",
-              self.name(),
-              self.stack.focused());
+        info!(
+            "Focusing next window in group {}: {:?}",
+            self.name(),
+            self.stack.focused()
+        );
         self.perform_layout();
     }
 
     pub fn focus_previous(&mut self) {
         self.stack.focus_previous();
-        info!("Focusing previous window in group {}: {:?}",
-              self.name(),
-              self.stack.focused());
+        info!(
+            "Focusing previous window in group {}: {:?}",
+            self.name(),
+            self.stack.focused()
+        );
         self.perform_layout();
     }
 
     pub fn shuffle_next(&mut self) {
-        info!("Shuffling focused window to next position in group {}: {:?}",
-              self.name(),
-              self.stack.focused());
+        info!(
+            "Shuffling focused window to next position in group {}: {:?}",
+            self.name(),
+            self.stack.focused()
+        );
         self.stack.shuffle_next();
         self.perform_layout();
     }
 
     pub fn shuffle_previous(&mut self) {
-        info!("Shuffling focused window to previous position in group {}: {:?}",
-              self.name(),
-              self.stack.focused());
+        info!(
+            "Shuffling focused window to previous position in group {}: {:?}",
+            self.name(),
+            self.stack.focused()
+        );
         self.stack.shuffle_previous();
         self.perform_layout();
     }
 
     pub fn layout_next(&mut self) {
         self.layouts.focus_next();
-        info!("Switching to next layout in group {}: {:?}",
-              self.name(),
-              self.layouts.focused());
+        info!(
+            "Switching to next layout in group {}: {:?}",
+            self.name(),
+            self.layouts.focused()
+        );
         self.perform_layout();
     }
 
     pub fn layout_previous(&mut self) {
         self.layouts.focus_next();
-        info!("Switching to previous layout in group {}: {:?}",
-              self.name(),
-              self.layouts.focused());
+        info!(
+            "Switching to previous layout in group {}: {:?}",
+            self.name(),
+            self.layouts.focused()
+        );
         self.layouts.focus_previous();
         self.perform_layout();
     }
@@ -202,14 +213,12 @@ impl<'a> Iterator for GroupIter<'a> {
     type Item = GroupWindow<'a>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        self.inner
-            .next()
-            .map(|window_id| {
-                     GroupWindow {
-                         connection: self.connection,
-                         window_id: window_id,
-                     }
-                 })
+        self.inner.next().map(|window_id| {
+            GroupWindow {
+                connection: self.connection,
+                window_id: window_id,
+            }
+        })
     }
 }
 

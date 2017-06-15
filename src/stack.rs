@@ -27,12 +27,12 @@ impl<T> Stack<T> {
     }
 
     pub fn remove<P>(&mut self, p: P) -> T
-        where P: FnMut(&T) -> bool
+    where
+        P: FnMut(&T) -> bool,
     {
-        let position = self.vec
-            .iter()
-            .position(p)
-            .expect("No element in stack matches predicate");
+        let position = self.vec.iter().position(p).expect(
+            "No element in stack matches predicate",
+        );
         let element = self.vec.remove(position);
         // Focus might now be pointing at the wrong element. If we
         self.fix_focus_after_removal(position);
@@ -53,11 +53,13 @@ impl<T> Stack<T> {
     fn fix_focus_after_removal(&mut self, removed_idx: usize) {
         self.focus = self.focus
             .and_then(|idx| if self.vec.is_empty() { None } else { Some(idx) })
-            .map(|idx| if idx > removed_idx || (idx == removed_idx && idx == self.vec.len()) {
-                     idx - 1
-                 } else {
-                     idx
-                 });
+            .map(|idx| if idx > removed_idx ||
+                (idx == removed_idx && idx == self.vec.len())
+            {
+                idx - 1
+            } else {
+                idx
+            });
     }
 
     pub fn iter(&self) -> Iter<T> {
@@ -69,51 +71,52 @@ impl<T> Stack<T> {
     }
 
     pub fn focused(&self) -> Option<&T> {
-        self.focus
-            .and_then(|idx| {
-                let item = self.vec.get(idx);
-                // `focus` should always point to a valid element of `vec`. If not, we've
-                // broken an invariant. Allow execution to continue, as it should be possible
-                // for the user to work around this in most cases.
-                if item.is_none() {
-                    error!("Stack's focus index ({}) is greater than it's length ({})",
-                           idx,
-                           self.vec.len());
-                }
-                item
-            })
+        self.focus.and_then(|idx| {
+            let item = self.vec.get(idx);
+            // `focus` should always point to a valid element of `vec`. If not, we've
+            // broken an invariant. Allow execution to continue, as it should be possible
+            // for the user to work around this in most cases.
+            if item.is_none() {
+                error!(
+                    "Stack's focus index ({}) is greater than it's length ({})",
+                    idx,
+                    self.vec.len()
+                );
+            }
+            item
+        })
     }
 
     pub fn focused_mut(&mut self) -> Option<&mut T> {
-        self.focus
-            .and_then(move |idx| {
-                let item = self.vec.get_mut(idx);
-                // `focus` should always point to a valid element of `vec`. If not, we've
-                // broken an invariant. Allow execution to continue, as it should be possible
-                // for the user to work around this in most cases.
-                if item.is_none() {
-                    error!("Stack's focus index ({}) is greater than it's length", idx);
-                }
-                item
-            })
+        self.focus.and_then(move |idx| {
+            let item = self.vec.get_mut(idx);
+            // `focus` should always point to a valid element of `vec`. If not, we've
+            // broken an invariant. Allow execution to continue, as it should be possible
+            // for the user to work around this in most cases.
+            if item.is_none() {
+                error!("Stack's focus index ({}) is greater than it's length", idx);
+            }
+            item
+        })
     }
 
     /// Focuses the first element in the stack that matches the predicate.
     ///
     /// Panics if no element matches the predicate.
     pub fn focus<P>(&mut self, p: P)
-        where P: FnMut(&T) -> bool
+    where
+        P: FnMut(&T) -> bool,
     {
-        let position = self.vec
-            .iter()
-            .position(p)
-            .expect("No element in stack matches predicate");
+        let position = self.vec.iter().position(p).expect(
+            "No element in stack matches predicate",
+        );
         self.focus = Some(position);
     }
 
     fn ensure_focus(&mut self) {
-        self.focus = self.focus
-            .or(if self.vec.is_empty() { None } else { Some(0) });
+        self.focus = self.focus.or(
+            if self.vec.is_empty() { None } else { Some(0) },
+        );
     }
 
     fn next_index(&self, index: usize) -> usize {

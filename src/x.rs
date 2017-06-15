@@ -64,17 +64,18 @@ impl Connection {
         };
 
         Ok(Connection {
-               conn,
-               root: WindowId(root),
-               screen_idx,
-               atoms,
-           })
+            conn,
+            root: WindowId(root),
+            screen_idx,
+            atoms,
+        })
     }
 
     /// Returns the Atom identifier associated with the atom_name str.
-    fn intern_atom(conn: &xcb::Connection,
-                   atom_name: &str)
-                   -> Result<xcb::Atom, xcb::GenericError> {
+    fn intern_atom(
+        conn: &xcb::Connection,
+        atom_name: &str,
+    ) -> Result<xcb::Atom, xcb::GenericError> {
         Ok(xcb::intern_atom(conn, false, atom_name).get_reply()?.atom())
     }
 
@@ -87,12 +88,17 @@ impl Connection {
     /// If there is already a window manager on the display, then this will
     /// fail.
     pub fn install_as_wm(&self, key_handlers: &KeyHandlers) -> Result<(), String> {
-        let values = [(xcb::CW_EVENT_MASK,
-                       xcb::EVENT_MASK_SUBSTRUCTURE_NOTIFY |
-                       xcb::EVENT_MASK_SUBSTRUCTURE_REDIRECT)];
+        let values = [
+            (
+                xcb::CW_EVENT_MASK,
+                xcb::EVENT_MASK_SUBSTRUCTURE_NOTIFY | xcb::EVENT_MASK_SUBSTRUCTURE_REDIRECT,
+            ),
+        ];
         xcb::change_window_attributes_checked(&self.conn, self.root.to_x(), &values)
             .request_check()
-            .or(Err("Could not register SUBSTRUCTURE_NOTIFY/REDIRECT".to_owned()))?;
+            .or(Err(
+                "Could not register SUBSTRUCTURE_NOTIFY/REDIRECT".to_owned(),
+            ))?;
 
         self.enable_window_key_events(&self.root, key_handlers);
 
@@ -111,13 +117,9 @@ impl Connection {
 
         // Matching the current group on name isn't perfect, but it's good enough for
         // EWMH.
-        let focused_idx = groups
-            .focused()
-            .and_then(|focused| {
-                          groups
-                              .iter()
-                              .position(|g| g.name() == focused.name())
-                      });
+        let focused_idx = groups.focused().and_then(|focused| {
+            groups.iter().position(|g| g.name() == focused.name())
+        });
         match focused_idx {
             Some(idx) => {
                 ewmh::set_current_desktop(&self.conn, self.screen_idx, idx as u32);
@@ -163,26 +165,28 @@ impl Connection {
             panic!("Not implemented: closing windows that don't expose WM_DELETE_WINDOW");
         }
 
-        let data = xcb::ClientMessageData::from_data32([self.atoms.WM_DELETE_WINDOW,
-                                                        xcb::CURRENT_TIME,
-                                                        0,
-                                                        0,
-                                                        0]);
+        let data = xcb::ClientMessageData::from_data32(
+            [self.atoms.WM_DELETE_WINDOW, xcb::CURRENT_TIME, 0, 0, 0],
+        );
         let event =
             xcb::ClientMessageEvent::new(32, window_id.to_x(), self.atoms.WM_PROTOCOLS, data);
-        xcb::send_event(&self.conn,
-                        false,
-                        window_id.to_x(),
-                        xcb::EVENT_MASK_NO_EVENT,
-                        &event);
+        xcb::send_event(
+            &self.conn,
+            false,
+            window_id.to_x(),
+            xcb::EVENT_MASK_NO_EVENT,
+            &event,
+        );
     }
 
     /// Sets the window's position and size.
     pub fn configure_window(&self, window_id: &WindowId, x: u32, y: u32, width: u32, height: u32) {
-        let values = [(xcb::CONFIG_WINDOW_X as u16, x),
-                      (xcb::CONFIG_WINDOW_Y as u16, y),
-                      (xcb::CONFIG_WINDOW_WIDTH as u16, width),
-                      (xcb::CONFIG_WINDOW_HEIGHT as u16, height)];
+        let values = [
+            (xcb::CONFIG_WINDOW_X as u16, x),
+            (xcb::CONFIG_WINDOW_Y as u16, y),
+            (xcb::CONFIG_WINDOW_WIDTH as u16, width),
+            (xcb::CONFIG_WINDOW_HEIGHT as u16, height),
+        ];
         xcb::configure_window(&self.conn, window_id.to_x(), &values);
     }
 
@@ -210,13 +214,15 @@ impl Connection {
         let key_symbols = KeySymbols::new(&self.conn).expect("Failed to create KeySymbols");
         for key in key_handlers.key_combos() {
             let keycode = key_symbols.get_keycode(key.keysym);
-            xcb::grab_key(&self.conn,
-                          false,
-                          window_id.to_x(),
-                          key.mod_mask as u16,
-                          keycode,
-                          xcb::GRAB_MODE_ASYNC as u8,
-                          xcb::GRAB_MODE_ASYNC as u8);
+            xcb::grab_key(
+                &self.conn,
+                false,
+                window_id.to_x(),
+                key.mod_mask as u16,
+                keycode,
+                xcb::GRAB_MODE_ASYNC as u8,
+                xcb::GRAB_MODE_ASYNC as u8,
+            );
         }
     }
 
@@ -231,10 +237,12 @@ impl Connection {
     }
 
     pub fn focus_window(&self, window_id: &WindowId) {
-        xcb::set_input_focus(&self.conn,
-                             xcb::INPUT_FOCUS_POINTER_ROOT as u8,
-                             window_id.to_x(),
-                             xcb::CURRENT_TIME);
+        xcb::set_input_focus(
+            &self.conn,
+            xcb::INPUT_FOCUS_POINTER_ROOT as u8,
+            window_id.to_x(),
+            xcb::CURRENT_TIME,
+        );
     }
 
     pub fn get_event_loop(&self) -> EventLoop {
@@ -268,10 +276,9 @@ impl<'a> Iterator for EventLoop<'a> {
             // have) just yielded.
             self.connection.flush();
 
-            let event = self.connection
-                .conn
-                .wait_for_event()
-                .expect("wait_for_event() returned None: IO error?");
+            let event = self.connection.conn.wait_for_event().expect(
+                "wait_for_event() returned None: IO error?",
+            );
 
             let propagate = match event.response_type() {
                 xcb::CONFIGURE_REQUEST => self.on_configure_request(xcb::cast_event(&event)),
@@ -297,13 +304,21 @@ impl<'a> EventLoop<'a> {
         // This request is not interesting for us: grant it unchanged.
         // Build a request with all attributes set, then filter out to only include
         // those from the original request.
-        let values = vec![(xcb::CONFIG_WINDOW_X as u16, event.x() as u32),
-                          (xcb::CONFIG_WINDOW_Y as u16, event.y() as u32),
-                          (xcb::CONFIG_WINDOW_WIDTH as u16, event.width() as u32),
-                          (xcb::CONFIG_WINDOW_HEIGHT as u16, event.height() as u32),
-                          (xcb::CONFIG_WINDOW_BORDER_WIDTH as u16, event.border_width() as u32),
-                          (xcb::CONFIG_WINDOW_SIBLING as u16, event.sibling() as u32),
-                          (xcb::CONFIG_WINDOW_STACK_MODE as u16, event.stack_mode() as u32)];
+        let values = vec![
+            (xcb::CONFIG_WINDOW_X as u16, event.x() as u32),
+            (xcb::CONFIG_WINDOW_Y as u16, event.y() as u32),
+            (xcb::CONFIG_WINDOW_WIDTH as u16, event.width() as u32),
+            (xcb::CONFIG_WINDOW_HEIGHT as u16, event.height() as u32),
+            (
+                xcb::CONFIG_WINDOW_BORDER_WIDTH as u16,
+                event.border_width() as u32
+            ),
+            (xcb::CONFIG_WINDOW_SIBLING as u16, event.sibling() as u32),
+            (
+                xcb::CONFIG_WINDOW_STACK_MODE as u16,
+                event.stack_mode() as u32
+            ),
+        ];
         let filtered_values: Vec<_> = values
             .into_iter()
             .filter(|&(mask, _)| mask & event.value_mask() != 0)
@@ -323,8 +338,8 @@ impl<'a> EventLoop<'a> {
     }
 
     fn on_key_press(&self, event: &xcb::KeyPressEvent) -> Option<Event> {
-        let key_symbols = KeySymbols::new(&self.connection.conn)
-            .expect("Failed to create KeySymbols");
+        let key_symbols =
+            KeySymbols::new(&self.connection.conn).expect("Failed to create KeySymbols");
         let keysym = key_symbols.key_press_lookup_keysym(event, 0);
         let mod_mask = event.state() as u32 & ModKey::mask_all();
         let key = KeyCombo { mod_mask, keysym };

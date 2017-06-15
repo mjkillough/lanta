@@ -8,10 +8,10 @@ pub trait Window {
     fn id(&self) -> &WindowId;
 
     fn without_focus_tracking<'a, F>(&'a self, func: F)
-        where F: Fn(&'a Self)
+    where
+        F: Fn(&'a Self),
     {
-        self.connection()
-            .disable_window_focus_tracking(self.id());
+        self.connection().disable_window_focus_tracking(self.id());
         (func)(self);
         self.connection().enable_window_focus_tracking(self.id());
     }
@@ -30,14 +30,21 @@ pub trait Window {
 
     /// Sets the window's position and size.
     fn configure(&self, x: u32, y: u32, width: u32, height: u32) {
-        debug!("Configuring window: {} (x={}, y={}, width={}, height={})",
-               self.id(),
-               x,
-               y,
-               width,
-               height);
-        self.connection()
-            .configure_window(self.id(), x, y, width, height);
+        debug!(
+            "Configuring window: {} (x={}, y={}, width={}, height={})",
+            self.id(),
+            x,
+            y,
+            width,
+            height
+        );
+        self.connection().configure_window(
+            self.id(),
+            x,
+            y,
+            width,
+            height,
+        );
     }
 
     /// Closes the window.

@@ -31,22 +31,26 @@ pub struct RustWindowManager {
 }
 
 impl RustWindowManager {
-    pub fn new<K>(keys: K,
-                  groups: Vec<GroupBuilder>,
-                  layouts: Vec<Box<Layout>>)
-                  -> Result<Self, String>
-        where K: Into<KeyHandlers>
+    pub fn new<K>(
+        keys: K,
+        groups: Vec<GroupBuilder>,
+        layouts: Vec<Box<Layout>>,
+    ) -> Result<Self, String>
+    where
+        K: Into<KeyHandlers>,
     {
         let keys = keys.into();
         let connection = Rc::new(Connection::connect()?);
         connection.install_as_wm(&keys)?;
 
-        let mut groups = Stack::from(groups
-                                         .into_iter()
-                                         .map(|group: GroupBuilder| {
-                                                  group.build(connection.clone(), layouts.clone())
-                                              })
-                                         .collect::<Vec<Group>>());
+        let mut groups = Stack::from(
+            groups
+                .into_iter()
+                .map(|group: GroupBuilder| {
+                    group.build(connection.clone(), layouts.clone())
+                })
+                .collect::<Vec<Group>>(),
+        );
 
         // Stack guarantees that if it is non-empty, then something will be focused.
         // This captures the case when we have no groups configured - useless in
@@ -64,10 +68,10 @@ impl RustWindowManager {
         connection.update_ewmh_desktops(&groups);
 
         Ok(RustWindowManager {
-               connection: connection.clone(),
-               keys: keys,
-               groups: groups,
-           })
+            connection: connection.clone(),
+            keys: keys,
+            groups: groups,
+        })
     }
 
     pub fn group(&self) -> &Group {
@@ -79,7 +83,8 @@ impl RustWindowManager {
     }
 
     pub fn switch_group<'a, S>(&'a mut self, name: S)
-        where S: Into<&'a str>
+    where
+        S: Into<&'a str>,
     {
         let name = name.into();
         self.group_mut().deactivate();
@@ -93,7 +98,8 @@ impl RustWindowManager {
     /// If the other named group does not exist, then the window is
     /// (unfortunately) lost.
     pub fn move_focused_to_group<'a, S>(&'a mut self, name: S)
-        where S: Into<&'a str>
+    where
+        S: Into<&'a str>,
     {
         let name = name.into();
 
@@ -104,9 +110,7 @@ impl RustWindowManager {
         }
 
         let removed = self.group_mut().remove_focused();
-        let new_group_opt = self.groups
-            .iter_mut()
-            .find(|group| group.name() == name);
+        let new_group_opt = self.groups.iter_mut().find(|group| group.name() == name);
         match new_group_opt {
             Some(new_group) => {
                 removed.map(|window| new_group.add_window(window));
@@ -135,8 +139,10 @@ impl RustWindowManager {
     }
 
     fn on_map_request(&mut self, window_id: WindowId) {
-        self.connection
-            .enable_window_key_events(&window_id, &self.keys);
+        self.connection.enable_window_key_events(
+            &window_id,
+            &self.keys,
+        );
         self.connection.enable_window_focus_tracking(&window_id);
         self.connection.map_window(&window_id);
 
@@ -145,16 +151,18 @@ impl RustWindowManager {
 
     fn on_destroy_notify(&mut self, window_id: WindowId) {
         // Remove the window from whichever Group it is in.
-        let group_opt = self.groups
-            .iter_mut()
-            .find(|group| group.contains(&window_id));
+        let group_opt = self.groups.iter_mut().find(
+            |group| group.contains(&window_id),
+        );
         match group_opt {
             Some(group) => {
                 group.remove_window(&window_id);
             }
             None => {
-                error!("on_destroy_notify: window {} is not in any group",
-                       window_id)
+                error!(
+                    "on_destroy_notify: window {} is not in any group",
+                    window_id
+                )
             }
         }
     }

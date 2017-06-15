@@ -9,7 +9,8 @@ pub trait LayoutClone {
 }
 
 impl<T> LayoutClone for T
-    where T: 'static + Layout + Clone
+where
+    T: 'static + Layout + Clone,
 {
     fn clone_box(&self) -> Box<Layout> {
         Box::new(self.clone())
@@ -60,12 +61,9 @@ impl Layout for TiledLayout {
 
         for (i, window) in stack.enumerate() {
             window.without_focus_tracking(|window| {
-                                              window.map();
-                                              window.configure(0,
-                                                               i as u32 * tile_height,
-                                                               width,
-                                                               tile_height);
-                                          });
+                window.map();
+                window.configure(0, i as u32 * tile_height, width, tile_height);
+            });
         }
     }
 }
@@ -94,21 +92,19 @@ impl Layout for StackLayout {
 
         {
             let unfocused = stack.filter(|window| {
-                                             focused
-                                                 .as_ref()
-                                                 .map_or(true, |focused_window| {
+                focused.as_ref().map_or(true, |focused_window| {
                     window.id() != focused_window.id()
                 })
-                                         });
+            });
             for window in unfocused {
                 window.without_focus_tracking(|window| window.unmap());
             }
         }
         focused.map(|window| {
-                        window.without_focus_tracking(|window| {
-                                                          window.map();
-                                                          window.configure(0, 0, width, height);
-                                                      })
-                    });
+            window.without_focus_tracking(|window| {
+                window.map();
+                window.configure(0, 0, width, height);
+            })
+        });
     }
 }

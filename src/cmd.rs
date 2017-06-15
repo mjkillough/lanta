@@ -20,7 +20,9 @@ pub mod lazy {
 
     /// Closes the currently focused window.
     pub fn close_focused_window() -> Command {
-        Rc::new(|ref mut wm| { wm.group_mut().get_focused().map(|w| w.close()); })
+        Rc::new(|ref mut wm| {
+            wm.group_mut().get_focused().map(|w| w.close());
+        })
     }
 
     /// Moves the focus to the next window in the current group's stack.
@@ -56,10 +58,10 @@ pub mod lazy {
     pub fn spawn(command: process::Command) -> Command {
         let mutex = Mutex::new(command);
         Rc::new(move |_| {
-                    let mut command = mutex.lock().unwrap();
-                    info!("Spawning: {:?}", *command);
-                    command.spawn().unwrap();
-                })
+            let mut command = mutex.lock().unwrap();
+            info!("Spawning: {:?}", *command);
+            command.spawn().unwrap();
+        })
     }
 
     /// Switches to the group specified by name.
