@@ -243,6 +243,7 @@ impl Connection {
             window_id.to_x(),
             xcb::CURRENT_TIME,
         );
+        ewmh::set_active_window(&self.conn, self.screen_idx, window_id.to_x());
     }
 
     pub fn get_event_loop(&self) -> EventLoop {
