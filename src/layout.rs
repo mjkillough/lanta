@@ -2,6 +2,7 @@ use std::fmt;
 
 use groups::{GroupIter, GroupWindow};
 use window::Window;
+use super::Viewport;
 
 
 pub trait LayoutClone {
@@ -20,7 +21,7 @@ where
 
 pub trait Layout: LayoutClone {
     fn name(&self) -> &str;
-    fn layout(&self, width: u32, height: u32, focused: Option<GroupWindow>, stack: GroupIter);
+    fn layout(&self, viewport: &Viewport, focused: Option<GroupWindow>, stack: GroupIter);
 }
 
 impl Clone for Box<Layout> {
@@ -52,17 +53,22 @@ impl Layout for TiledLayout {
         &self.name
     }
 
-    fn layout(&self, width: u32, height: u32, _: Option<GroupWindow>, stack: GroupIter) {
+    fn layout(&self, viewport: &Viewport, _: Option<GroupWindow>, stack: GroupIter) {
         if stack.len() == 0 {
             return;
         }
 
-        let tile_height = height / stack.len() as u32;
+        let tile_height = viewport.height / stack.len() as u32;
 
         for (i, window) in stack.enumerate() {
             window.without_focus_tracking(|window| {
                 window.map();
-                window.configure(0, i as u32 * tile_height, width, tile_height);
+                window.configure(
+                    viewport.x,
+                    viewport.y + (i as u32 * tile_height),
+                    viewport.width,
+                    tile_height,
+                );
             });
         }
     }
@@ -85,7 +91,7 @@ impl Layout for StackLayout {
         &self.name
     }
 
-    fn layout(&self, width: u32, height: u32, focused: Option<GroupWindow>, stack: GroupIter) {
+    fn layout(&self, viewport: &Viewport, focused: Option<GroupWindow>, stack: GroupIter) {
         if stack.len() == 0 {
             return;
         }
@@ -103,7 +109,7 @@ impl Layout for StackLayout {
         focused.map(|window| {
             window.without_focus_tracking(|window| {
                 window.map();
-                window.configure(0, 0, width, height);
+                window.configure(viewport.x, viewport.y, viewport.width, viewport.height);
             })
         });
     }

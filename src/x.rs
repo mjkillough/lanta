@@ -1,4 +1,5 @@
 use std::fmt;
+use std::collections::HashMap;
 
 use xcb;
 use xcb_util::{ewmh, icccm};
@@ -8,6 +9,9 @@ use debug;
 use keys::{KeyCombo, KeyHandlers, ModKey};
 use groups::Group;
 use stack::Stack;
+
+
+pub use self::ewmh::StrutPartial;
 
 
 /// A handle to an X Window.
@@ -24,6 +28,25 @@ impl fmt::Display for WindowId {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}", self.0)
     }
+}
+
+
+#[derive(Copy, Clone, Debug, PartialEq)]
+pub enum WindowType {
+    Desktop,
+    Dock,
+    Toolbar,
+    Menu,
+    Utility,
+    Splash,
+    Dialog,
+    DropdownMenu,
+    PopupMenu,
+    Tooltip,
+    Notification,
+    Combo,
+    Dnd,
+    Normal,
 }
 
 
@@ -65,6 +88,7 @@ pub struct Connection {
     root: WindowId,
     screen_idx: i32,
     atoms: InternedAtoms,
+    window_type_lookup: HashMap<xcb::Atom, WindowType>,
 }
 
 
@@ -81,11 +105,31 @@ impl Connection {
 
         let atoms = InternedAtoms::new(&conn).or(Err("Failed to intern atoms"))?;
 
+        let mut lookup = HashMap::new();
+        lookup.insert(conn.WM_WINDOW_TYPE_DESKTOP(), WindowType::Desktop);
+        lookup.insert(conn.WM_WINDOW_TYPE_DOCK(), WindowType::Dock);
+        lookup.insert(conn.WM_WINDOW_TYPE_TOOLBAR(), WindowType::Toolbar);
+        lookup.insert(conn.WM_WINDOW_TYPE_MENU(), WindowType::Menu);
+        lookup.insert(conn.WM_WINDOW_TYPE_UTILITY(), WindowType::Utility);
+        lookup.insert(conn.WM_WINDOW_TYPE_SPLASH(), WindowType::Splash);
+        lookup.insert(conn.WM_WINDOW_TYPE_DIALOG(), WindowType::Dialog);
+        lookup.insert(
+            conn.WM_WINDOW_TYPE_DROPDOWN_MENU(),
+            WindowType::DropdownMenu,
+        );
+        lookup.insert(conn.WM_WINDOW_TYPE_POPUP_MENU(), WindowType::PopupMenu);
+        lookup.insert(conn.WM_WINDOW_TYPE_TOOLTIP(), WindowType::Tooltip);
+        lookup.insert(conn.WM_WINDOW_TYPE_NOTIFICATION(), WindowType::Notification);
+        lookup.insert(conn.WM_WINDOW_TYPE_COMBO(), WindowType::Combo);
+        lookup.insert(conn.WM_WINDOW_TYPE_DND(), WindowType::Dnd);
+        lookup.insert(conn.WM_WINDOW_TYPE_NORMAL(), WindowType::Normal);
+
         Ok(Connection {
             conn,
             root: WindowId(root),
             screen_idx,
             atoms,
+            window_type_lookup: lookup,
         })
     }
 
@@ -167,6 +211,28 @@ impl Connection {
         let reply = icccm::get_wm_protocols(&self.conn, window_id.to_x(), self.atoms.WM_PROTOCOLS)
             .get_reply()?;
         Ok(reply.atoms().to_vec())
+    }
+
+    pub fn get_window_types(&self, window_id: &WindowId) -> Vec<WindowType> {
+        // Filter out any types we don't understand, as that's what the EWMH
+        // spec suggests we should do. Don't error if _NET_WM_WINDOW_TYPE
+        // is not set - lots of applications don't bother.
+        ewmh::get_wm_window_type(&self.conn, window_id.to_x())
+            .get_reply()
+            .map(|reply| {
+                reply
+                    .atoms()
+                    .iter()
+                    .filter_map(|a| self.window_type_lookup.get(a).cloned())
+                    .collect()
+            })
+            .unwrap_or(Vec::new())
+    }
+
+    pub fn get_strut_partial(&self, window_id: &WindowId) -> Option<StrutPartial> {
+        ewmh::get_wm_strut_partial(&self.conn, window_id.to_x())
+            .get_reply()
+            .ok()
     }
 
     /// Closes a window.

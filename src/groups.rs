@@ -5,6 +5,7 @@ use layout::Layout;
 use stack::Stack;
 use window::Window;
 use x::{Connection, WindowId};
+use super::Viewport;
 
 
 #[derive(Clone)]
@@ -31,6 +32,7 @@ impl GroupBuilder {
             active: false,
             stack: Stack::new(),
             layouts: layouts_stack,
+            viewport: Viewport::default(),
         }
     }
 }
@@ -42,6 +44,7 @@ pub struct Group {
     active: bool,
     stack: Stack<WindowId>,
     layouts: Stack<Box<Layout>>,
+    viewport: Viewport,
 }
 
 impl Group {
@@ -49,9 +52,15 @@ impl Group {
         &self.name
     }
 
-    pub fn activate(&mut self) {
+    pub fn activate(&mut self, viewport: Viewport) {
         info!("Activating group: {}", self.name());
         self.active = true;
+        self.viewport = viewport;
+        self.perform_layout();
+    }
+
+    pub fn update_viewport(&mut self, viewport: Viewport) {
+        self.viewport = viewport;
         self.perform_layout();
     }
 
@@ -69,9 +78,6 @@ impl Group {
         }
 
         // Allow the layout to map and position windows it cares about.
-        let (width, height) = self.connection.get_window_geometry(
-            &self.connection.root_window_id(),
-        );
         let focused = self.stack.focused().map(|window_id| {
             GroupWindow {
                 connection: &self.connection,
@@ -79,7 +85,7 @@ impl Group {
             }
         });
         self.layouts.focused().map(|l| {
-            l.layout(width, height, focused, self.iter())
+            l.layout(&self.viewport, focused, self.iter())
         });
 
         // Tell X to focus the focused window for this group.

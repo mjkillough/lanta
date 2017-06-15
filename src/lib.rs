@@ -6,6 +6,7 @@ extern crate libc;
 extern crate xcb;
 extern crate xcb_util;
 
+use std::cmp;
 use std::rc::Rc;
 
 pub mod cmd;
@@ -21,13 +22,75 @@ use groups::{Group, GroupBuilder};
 use keys::{KeyCombo, KeyHandlers};
 use layout::Layout;
 use stack::Stack;
-use x::{Connection, Event, WindowId};
+use x::{Connection, Event, StrutPartial, WindowId, WindowType};
+
+
+#[derive(Clone, Copy, Debug, Default)]
+pub struct Viewport {
+    pub x: u32,
+    pub y: u32,
+    pub width: u32,
+    pub height: u32,
+}
+
+
+struct Dock {
+    window_id: WindowId,
+    strut_partial: Option<StrutPartial>,
+}
+
+
+#[derive(Default)]
+struct Docks {
+    vec: Vec<Dock>,
+}
+
+impl Docks {
+    pub fn add(&mut self, conn: &Connection, window_id: WindowId) {
+        let strut_partial = conn.get_strut_partial(&window_id);
+        self.vec.push(Dock {
+            window_id,
+            strut_partial,
+        });
+    }
+
+    pub fn remove(&mut self, window_id: &WindowId) {
+        self.vec.retain(|d| &d.window_id != window_id);
+    }
+
+    /// Figure out the usable area of the screen based on the STRUT_PARTIAL of
+    /// all docks.
+    pub fn viewport(&self, screen_width: u32, screen_height: u32) -> Viewport {
+        let (left, right, top, bottom) = self.vec
+            .iter()
+            .filter_map(|o| o.strut_partial.as_ref())
+            .fold((0, 0, 0, 0), |(left, right, top, bottom), s| {
+                // We don't bother looking at the start/end members of the
+                // StrutPartial - treating it more like a Strut.
+                (
+                    cmp::max(left, s.left()),
+                    cmp::max(right, s.right()),
+                    cmp::max(top, s.top()),
+                    cmp::max(bottom, s.bottom()),
+                )
+            });
+        let viewport = Viewport {
+            x: left,
+            y: top,
+            width: screen_width - left - right,
+            height: screen_height - top - bottom,
+        };
+        debug!("Calculated Viewport as {:?}", viewport);
+        viewport
+    }
+}
 
 
 pub struct RustWindowManager {
     connection: Rc<Connection>,
     keys: KeyHandlers,
     groups: Stack<Group>,
+    docks: Docks,
 }
 
 impl RustWindowManager {
@@ -43,7 +106,7 @@ impl RustWindowManager {
         let connection = Rc::new(Connection::connect()?);
         connection.install_as_wm(&keys)?;
 
-        let mut groups = Stack::from(
+        let groups = Stack::from(
             groups
                 .into_iter()
                 .map(|group: GroupBuilder| {
@@ -52,26 +115,30 @@ impl RustWindowManager {
                 .collect::<Vec<Group>>(),
         );
 
-        // Stack guarantees that if it is non-empty, then something will be focused.
-        // This captures the case when we have no groups configured - useless in
-        // practise, but maybe there'll be some use for it in tests.
-        if let Some(group) = groups.focused_mut() {
-            // Add all existing windows to the default group.
-            let existing_windows = connection.top_level_windows().unwrap();
-            for window in existing_windows {
-                group.add_window(window);
-            }
-
-            group.activate();
-        }
-
-        connection.update_ewmh_desktops(&groups);
-
-        Ok(RustWindowManager {
+        let mut wm = RustWindowManager {
             connection: connection.clone(),
             keys: keys,
             groups: groups,
-        })
+            docks: Docks::default(),
+        };
+
+        // Learn about existing top-level windows.
+        let existing_windows = connection.top_level_windows().unwrap();
+        for window in existing_windows {
+            wm.add_window(window);
+        }
+        let viewport = wm.viewport();
+        wm.group_mut().activate(viewport);
+        wm.connection.update_ewmh_desktops(&wm.groups);
+
+        Ok(wm)
+    }
+
+    fn viewport(&self) -> Viewport {
+        let (width, height) = self.connection.get_window_geometry(
+            self.connection.root_window_id(),
+        );
+        self.docks.viewport(width, height)
     }
 
     pub fn group(&self) -> &Group {
@@ -89,7 +156,8 @@ impl RustWindowManager {
         let name = name.into();
         self.group_mut().deactivate();
         self.groups.focus(|group| group.name() == name);
-        self.group_mut().activate();
+        let viewport = self.viewport();
+        self.group_mut().activate(viewport);
         self.connection.update_ewmh_desktops(&self.groups);
     }
 
@@ -124,6 +192,25 @@ impl RustWindowManager {
         }
     }
 
+    pub fn add_window(&mut self, window_id: WindowId) {
+        let window_types = self.connection.get_window_types(&window_id);
+        let dock = window_types.contains(&WindowType::Dock);
+
+        self.connection.enable_window_key_events(
+            &window_id,
+            &self.keys,
+        );
+
+        if dock {
+            self.docks.add(&self.connection, window_id);
+            let viewport = self.viewport();
+            self.group_mut().update_viewport(viewport);
+        } else {
+            self.connection.enable_window_focus_tracking(&window_id);
+            self.group_mut().add_window(window_id);
+        }
+    }
+
     pub fn run_event_loop(&mut self) {
         let event_loop_connection = self.connection.clone();
         let event_loop = event_loop_connection.get_event_loop();
@@ -139,32 +226,22 @@ impl RustWindowManager {
     }
 
     fn on_map_request(&mut self, window_id: WindowId) {
-        self.connection.enable_window_key_events(
-            &window_id,
-            &self.keys,
-        );
-        self.connection.enable_window_focus_tracking(&window_id);
         self.connection.map_window(&window_id);
-
-        self.group_mut().add_window(window_id);
+        self.add_window(window_id);
     }
 
     fn on_destroy_notify(&mut self, window_id: WindowId) {
-        // Remove the window from whichever Group it is in.
-        let group_opt = self.groups.iter_mut().find(
-            |group| group.contains(&window_id),
-        );
-        match group_opt {
-            Some(group) => {
-                group.remove_window(&window_id);
-            }
-            None => {
-                error!(
-                    "on_destroy_notify: window {} is not in any group",
-                    window_id
-                )
-            }
-        }
+        // Remove the window from whichever Group it is in. Special case for
+        // docks which aren't in any group.
+        self.groups
+            .iter_mut()
+            .find(|group| group.contains(&window_id))
+            .map(|group| group.remove_window(&window_id));
+        self.docks.remove(&window_id);
+
+        // The viewport may have changed.
+        let viewport = self.viewport();
+        self.group_mut().update_viewport(viewport);
     }
 
     fn on_key_press(&mut self, key: KeyCombo) {
