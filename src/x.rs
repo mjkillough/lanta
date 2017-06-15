@@ -243,24 +243,22 @@ impl Connection {
         let protocols = self.get_wm_protocols(window_id).unwrap();
         let has_wm_delete_window = protocols.contains(&self.atoms.WM_DELETE_WINDOW);
 
-        // TODO: Use XDestroyWindow to forcefully close windows that do not support
-        // WM_DELETE_WINDOW.
-        if !has_wm_delete_window {
-            panic!("Not implemented: closing windows that don't expose WM_DELETE_WINDOW");
+        if has_wm_delete_window {
+            let data = xcb::ClientMessageData::from_data32(
+                [self.atoms.WM_DELETE_WINDOW, xcb::CURRENT_TIME, 0, 0, 0],
+            );
+            let event =
+                xcb::ClientMessageEvent::new(32, window_id.to_x(), self.atoms.WM_PROTOCOLS, data);
+            xcb::send_event(
+                &self.conn,
+                false,
+                window_id.to_x(),
+                xcb::EVENT_MASK_NO_EVENT,
+                &event,
+            );
+        } else {
+            xcb::destroy_window(&self.conn, window_id.to_x());
         }
-
-        let data = xcb::ClientMessageData::from_data32(
-            [self.atoms.WM_DELETE_WINDOW, xcb::CURRENT_TIME, 0, 0, 0],
-        );
-        let event =
-            xcb::ClientMessageEvent::new(32, window_id.to_x(), self.atoms.WM_PROTOCOLS, data);
-        xcb::send_event(
-            &self.conn,
-            false,
-            window_id.to_x(),
-            xcb::EVENT_MASK_NO_EVENT,
-            &event,
-        );
     }
 
     /// Sets the window's position and size.
