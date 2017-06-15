@@ -29,7 +29,7 @@ pub trait Window {
     }
 
     /// Sets the window's position and size.
-    fn configure(&self, x: i32, y: i32, width: i32, height: i32) {
+    fn configure(&self, x: u32, y: u32, width: u32, height: u32) {
         debug!("Configuring window: {} (x={}, y={}, width={}, height={})",
                self.id(),
                x,
@@ -43,6 +43,6 @@ pub trait Window {
     /// Closes the window.
     fn close(&self) {
         info!("Closing window: {}", self.id());
-        self.connection().close_window(&self.id());
+        self.connection().close_window(self.id());
     }
 }

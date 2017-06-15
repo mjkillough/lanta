@@ -18,7 +18,9 @@ libc = "0.2.21"
 log = "0.3.7"
 time = "0.1.37"
 xdg = "2.1.0"
+xcb = "0.7.6"
+x11 = "2.12.1"
 
-[dependencies.x11]
-version = "2.12.1"
-features = ["xlib"]
+[dependencies.xcb-util]
+path = "./xcb-util"
+features = ["ewmh", "icccm", "keysyms"]

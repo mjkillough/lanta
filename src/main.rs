@@ -19,8 +19,8 @@ use x11::keysym;
 
 
 fn main() {
-    let xdg_dirs =
-        xdg::BaseDirectories::with_prefix("lanta").expect("Could not create xdg BaseDirectories");
+    let xdg_dirs = xdg::BaseDirectories::with_prefix("lanta")
+        .expect("Could not create xdg BaseDirectories");
     let log_path = xdg_dirs
         .place_data_file("lanta.log")
         .expect("Could not create log file");
@@ -37,7 +37,7 @@ fn main() {
         panic!("Failed to initialize global logger: {}", e);
     }
 
-    let modkey = ModKey::Mod4;
+    let modkey = ModKey::Control;
     let shift = ModKey::Shift;
     let mut keys =
         vec![(vec![modkey], keysym::XK_w, cmd::lazy::close_focused_window()),

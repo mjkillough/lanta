@@ -19,7 +19,7 @@ impl<T> LayoutClone for T
 
 pub trait Layout: LayoutClone {
     fn name(&self) -> &str;
-    fn layout(&self, width: i32, height: i32, focused: Option<GroupWindow>, stack: GroupIter);
+    fn layout(&self, width: u32, height: u32, focused: Option<GroupWindow>, stack: GroupIter);
 }
 
 impl Clone for Box<Layout> {
@@ -51,18 +51,18 @@ impl Layout for TiledLayout {
         &self.name
     }
 
-    fn layout(&self, width: i32, height: i32, _: Option<GroupWindow>, stack: GroupIter) {
+    fn layout(&self, width: u32, height: u32, _: Option<GroupWindow>, stack: GroupIter) {
         if stack.len() == 0 {
             return;
         }
 
-        let tile_height = height / stack.len() as i32;
+        let tile_height = height / stack.len() as u32;
 
         for (i, window) in stack.enumerate() {
             window.without_focus_tracking(|window| {
                                               window.map();
                                               window.configure(0,
-                                                               i as i32 * tile_height,
+                                                               i as u32 * tile_height,
                                                                width,
                                                                tile_height);
                                           });
@@ -87,7 +87,7 @@ impl Layout for StackLayout {
         &self.name
     }
 
-    fn layout(&self, width: i32, height: i32, focused: Option<GroupWindow>, stack: GroupIter) {
+    fn layout(&self, width: u32, height: u32, focused: Option<GroupWindow>, stack: GroupIter) {
         if stack.len() == 0 {
             return;
         }

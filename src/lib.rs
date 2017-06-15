@@ -3,7 +3,8 @@
 #[macro_use]
 extern crate log;
 extern crate libc;
-extern crate x11;
+extern crate xcb;
+extern crate xcb_util;
 
 use std::rc::Rc;
 
@@ -52,7 +53,7 @@ impl RustWindowManager {
         // practise, but maybe there'll be some use for it in tests.
         if let Some(group) = groups.focused_mut() {
             // Add all existing windows to the default group.
-            let existing_windows = connection.top_level_windows();
+            let existing_windows = connection.top_level_windows().unwrap();
             for window in existing_windows {
                 group.add_window(window);
             }

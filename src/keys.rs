@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use std::os::raw::c_uint;
 
-use x11::xlib;
+use xcb;
 
 use cmd::Command;
 
@@ -24,20 +24,21 @@ type ModMask = c_uint;
 
 impl ModKey {
     pub fn mask_all() -> ModMask {
-        xlib::ShiftMask | xlib::LockMask | xlib::ControlMask | xlib::Mod1Mask |
-        xlib::Mod2Mask | xlib::Mod3Mask | xlib::Mod4Mask | xlib::Mod5Mask
+        xcb::MOD_MASK_SHIFT | xcb::MOD_MASK_LOCK | xcb::MOD_MASK_CONTROL |
+        xcb::MOD_MASK_1 | xcb::MOD_MASK_2 | xcb::MOD_MASK_3 | xcb::MOD_MASK_4 |
+        xcb::MOD_MASK_5
     }
 
     fn mask(&self) -> ModMask {
         match self {
-            &ModKey::Shift => xlib::ShiftMask,
-            &ModKey::Lock => xlib::LockMask,
-            &ModKey::Control => xlib::ControlMask,
-            &ModKey::Mod1 => xlib::Mod1Mask,
-            &ModKey::Mod2 => xlib::Mod2Mask,
-            &ModKey::Mod3 => xlib::Mod3Mask,
-            &ModKey::Mod4 => xlib::Mod4Mask,
-            &ModKey::Mod5 => xlib::Mod5Mask,
+            &ModKey::Shift => xcb::MOD_MASK_SHIFT,
+            &ModKey::Lock => xcb::MOD_MASK_LOCK,
+            &ModKey::Control => xcb::MOD_MASK_CONTROL,
+            &ModKey::Mod1 => xcb::MOD_MASK_1,
+            &ModKey::Mod2 => xcb::MOD_MASK_2,
+            &ModKey::Mod3 => xcb::MOD_MASK_3,
+            &ModKey::Mod4 => xcb::MOD_MASK_4,
+            &ModKey::Mod5 => xcb::MOD_MASK_5,
         }
     }
 }

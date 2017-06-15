@@ -1,11 +1,8 @@
-use std;
-use std::ffi::{CStr, CString};
 use std::fmt;
-use std::os::raw::{c_char, c_int, c_long, c_uchar, c_uint, c_ulong, c_void};
-use std::ptr;
-use std::slice;
 
-use x11::xlib;
+use xcb;
+use xcb_util::{ewmh, icccm};
+use xcb_util::keysyms::KeySymbols;
 
 use debug;
 use keys::{KeyCombo, KeyHandlers, ModKey};
@@ -15,10 +12,10 @@ use stack::Stack;
 
 /// A handle to an X Window.
 #[derive(Debug, PartialEq)]
-pub struct WindowId(xlib::Window);
+pub struct WindowId(xcb::Window);
 
 impl WindowId {
-    fn to_x(&self) -> xlib::Window {
+    fn to_x(&self) -> xcb::Window {
         self.0
     }
 }
@@ -32,56 +29,57 @@ impl fmt::Display for WindowId {
 
 #[allow(non_snake_case)]
 struct InternedAtoms {
-    WM_DELETE_WINDOW: xlib::Atom,
-    WM_PROTOCOLS: xlib::Atom,
-    _NET_NUMBER_OF_DESKTOPS: xlib::Atom,
-    _NET_CURRENT_DESKTOP: xlib::Atom,
-    _NET_DESKTOP_NAMES: xlib::Atom,
+    WM_DELETE_WINDOW: xcb::Atom,
+    WM_PROTOCOLS: xcb::Atom,
+    _NET_NUMBER_OF_DESKTOPS: xcb::Atom,
+    _NET_CURRENT_DESKTOP: xcb::Atom,
+    _NET_DESKTOP_NAMES: xcb::Atom,
 }
 
 pub struct Connection {
-    display: *mut xlib::Display,
+    conn: ewmh::Connection,
     root: WindowId,
+    screen_idx: i32,
     atoms: InternedAtoms,
 }
 
-// TODO: Implement Drop so that we can call XCloseDisplay?
 
 impl Connection {
     /// Opens a connection to the X server, returning a new Connection object.
     pub fn connect() -> Result<Connection, String> {
-        let (display, root) = unsafe {
-            let display: *mut xlib::Display = xlib::XOpenDisplay(ptr::null_mut());
-            let root: xlib::Window = xlib::XDefaultRootWindow(display);
-            (display, root)
+        let (conn, screen_idx) = xcb::Connection::connect(None).unwrap();
+        let conn = ewmh::Connection::connect(conn).map_err(|_| ()).unwrap();
+        let root = conn.get_setup()
+            .roots()
+            .nth(screen_idx as usize)
+            .ok_or("Invalid screen")?
+            .root();
+
+        let atoms = InternedAtoms {
+            WM_PROTOCOLS: Self::intern_atom(&conn, "WM_PROTOCOLS").unwrap(),
+            WM_DELETE_WINDOW: Self::intern_atom(&conn, "WM_DELETE_WINDOW").unwrap(),
+            _NET_NUMBER_OF_DESKTOPS: Self::intern_atom(&conn, "_NET_NUMBER_OF_DESKTOPS").unwrap(),
+            _NET_CURRENT_DESKTOP: Self::intern_atom(&conn, "_NET_CURRENT_DESKTOP").unwrap(),
+            _NET_DESKTOP_NAMES: Self::intern_atom(&conn, "_NET_DESKTOP_NAMES").unwrap(),
         };
 
-        if display.is_null() {
-            return Err("XOpenDisplay returned null pointer".to_owned());
-        }
-        if root == 0 {
-            return Err("XDefaultRootWindow returned 0".to_owned());
-        }
-
         Ok(Connection {
-               display: display,
+               conn,
                root: WindowId(root),
-               atoms: InternedAtoms {
-                   WM_PROTOCOLS: Self::intern_atom(display, "WM_PROTOCOLS"),
-                   WM_DELETE_WINDOW: Self::intern_atom(display, "WM_DELETE_WINDOW"),
-                   _NET_NUMBER_OF_DESKTOPS: Self::intern_atom(display, "_NET_NUMBER_OF_DESKTOPS"),
-                   _NET_CURRENT_DESKTOP: Self::intern_atom(display, "_NET_CURRENT_DESKTOP"),
-                   _NET_DESKTOP_NAMES: Self::intern_atom(display, "_NET_DESKTOP_NAMES"),
-               },
+               screen_idx,
+               atoms,
            })
     }
 
     /// Returns the Atom identifier associated with the atom_name str.
-    fn intern_atom(display: *mut xlib::Display, atom_name: &str) -> xlib::Atom {
-        // Note: the CString is bound to a variable to ensure adequate lifetime.
-        let cstring = CString::new(atom_name).unwrap();
-        let ptr = cstring.as_ptr() as *const c_char;
-        unsafe { xlib::XInternAtom(display, ptr, 0) }
+    fn intern_atom(conn: &xcb::Connection,
+                   atom_name: &str)
+                   -> Result<xcb::Atom, xcb::GenericError> {
+        Ok(xcb::intern_atom(conn, false, atom_name).get_reply()?.atom())
+    }
+
+    fn flush(&self) {
+        self.conn.flush();
     }
 
     /// Installs the Connection as a window manager, by registers for
@@ -89,19 +87,12 @@ impl Connection {
     /// If there is already a window manager on the display, then this will
     /// fail.
     pub fn install_as_wm(&self, key_handlers: &KeyHandlers) -> Result<(), String> {
-        unsafe {
-            // It's tricky to get state from the error handler to here, so we install a
-            // special handler while becoming the WM that panics on error.
-            xlib::XSetErrorHandler(Some(debug::error_handler_init));
-            xlib::XSelectInput(self.display,
-                               self.root.to_x(),
-                               xlib::SubstructureNotifyMask | xlib::SubstructureRedirectMask);
-            xlib::XSync(self.display, 0);
-
-            // If we get this far, then our error handler didn't panic. Set a more useful
-            // error handler.
-            xlib::XSetErrorHandler(Some(debug::error_handler));
-        }
+        let values = [(xcb::CW_EVENT_MASK,
+                       xcb::EVENT_MASK_SUBSTRUCTURE_NOTIFY |
+                       xcb::EVENT_MASK_SUBSTRUCTURE_REDIRECT)];
+        xcb::change_window_attributes_checked(&self.conn, self.root.to_x(), &values)
+            .request_check()
+            .or(Err("Could not register SUBSTRUCTURE_NOTIFY/REDIRECT".to_owned()))?;
 
         self.enable_window_key_events(&self.root, key_handlers);
 
@@ -113,91 +104,38 @@ impl Connection {
         &self.root
     }
 
-    fn set_property_cardinal(&self, window: &WindowId, atom: xlib::Atom, value: u32) {
-        let addr = (&value as *const u32) as *const c_uchar;
-        unsafe {
-            xlib::XChangeProperty(self.display,
-                                  window.to_x(),
-                                  atom,
-                                  xlib::XA_CARDINAL,
-                                  32,
-                                  xlib::PropModeReplace,
-                                  addr,
-                                  1);
-        }
-    }
-
-    fn set_property_string_list(&self, window: &WindowId, atom: xlib::Atom, strs: &[&str]) {
-        let len = strs.iter().fold(0, |acc, s| acc + s.len() + 1);
-        let mut buf: Vec<u8> = Vec::with_capacity(len);
-        for s in strs {
-            buf.append(&mut s.as_bytes().to_vec());
-            buf.push(0);
-        }
-        unsafe {
-            xlib::XChangeProperty(self.display,
-                                  window.to_x(),
-                                  atom,
-                                  xlib::XA_STRING,
-                                  8,
-                                  xlib::PropModeReplace,
-                                  buf.as_ptr() as *const c_uchar,
-                                  buf.len() as i32);
-        }
-    }
-
     pub fn update_ewmh_desktops(&self, groups: &Stack<Group>) {
-        let group_names: Vec<&str> = groups.iter().map(|g| g.name()).collect();
-        self.set_property_string_list(&self.root, self.atoms._NET_DESKTOP_NAMES, &group_names);
-        self.set_property_cardinal(&self.root,
-                                   self.atoms._NET_NUMBER_OF_DESKTOPS,
-                                   groups.len() as u32);
+        let group_names = groups.iter().map(|g| g.name());
+        ewmh::set_desktop_names(&self.conn, self.screen_idx, group_names);
+        ewmh::set_number_of_desktops(&self.conn, self.screen_idx, groups.len() as u32);
 
         // Matching the current group on name isn't perfect, but it's good enough for
         // EWMH.
-        match groups.focused() {
-            Some(focused_group) => {
-                match groups
-                          .iter()
-                          .position(|group| group.name() == focused_group.name()) {
-                    Some(focused_group_index) => {
-                        self.set_property_cardinal(&self.root,
-                                                   self.atoms._NET_CURRENT_DESKTOP,
-                                                   focused_group_index as u32);
-                    }
-                    None => error!("Invariant: active group not found in group stack"),
-                }
+        let focused_idx = groups
+            .focused()
+            .and_then(|focused| {
+                          groups
+                              .iter()
+                              .position(|g| g.name() == focused.name())
+                      });
+        match focused_idx {
+            Some(idx) => {
+                ewmh::set_current_desktop(&self.conn, self.screen_idx, idx as u32);
             }
-            None => error!("Invariant: no active group"),
+            None => {
+                error!("Invariant: failed to get active group index");
+            }
         };
     }
 
-    pub fn top_level_windows(&self) -> Vec<WindowId> {
-        let mut root: xlib::Window = 0;
-        let mut parent: xlib::Window = 0;
-        let mut children: *mut xlib::Window = ptr::null_mut();
-        let mut num_children: c_uint = 0;
-        unsafe {
-            xlib::XQueryTree(self.display,
-                             self.root.to_x(),
-                             &mut root,
-                             &mut parent,
-                             &mut children,
-                             &mut num_children);
-        }
-
-        if children.is_null() || num_children == 0 {
-            return vec![];
-        }
-
-        let slice = unsafe { slice::from_raw_parts(children, num_children as usize) };
-        let vec: Vec<WindowId> = slice.iter().map(|id| WindowId(*id)).collect();
-
-        unsafe {
-            xlib::XFree(children as *mut c_void);
-        }
-
-        vec
+    pub fn top_level_windows(&self) -> Result<Vec<WindowId>, xcb::GenericError> {
+        let windows = xcb::query_tree(&self.conn, self.root.to_x())
+            .get_reply()?
+            .children()
+            .iter()
+            .map(|w| WindowId(*w))
+            .collect();
+        Ok(windows)
     }
 
     /// Queries the WM_PROTOCOLS property of a window, returning a list of the
@@ -205,56 +143,19 @@ impl Connection {
     // TODO: Have this return a list of atoms, rather than a list of strings.
     // (Perhaps we should
     // have a separate function to convert to a list of strings for debugging?)
-    pub fn get_wm_protocols(&self, window_id: &WindowId) -> Vec<String> {
-        let mut atoms: *mut c_ulong = ptr::null_mut();
-        let mut count: c_int = 0;
-        unsafe {
-            xlib::XGetWMProtocols(self.display, window_id.to_x(), &mut atoms, &mut count);
-        }
-
-        if atoms.is_null() {
-            error!("XGetWMProtocols returned null pointer");
-            return Vec::new();
-        }
-        if count == 0 {
-            return Vec::new();
-        }
-
-        let mut pointers: Vec<*mut c_char> = Vec::with_capacity(count as usize);
-        let protocols: Vec<String> = unsafe {
-            xlib::XGetAtomNames(self.display, atoms, count, pointers.as_mut_ptr());
-            pointers.set_len(count as usize);
-            pointers
-                .iter()
-                .map(|buffer| {
-                         CStr::from_ptr(*buffer)
-                             .to_str()
-                             .unwrap()
-                             .to_owned()
-                     })
-                .collect()
-        };
-
-        unsafe {
-            for pointer in pointers.iter() {
-                xlib::XFree(*pointer as *mut c_void);
-            }
-            xlib::XFree(atoms as *mut c_void);
-        }
-
-        protocols
+    fn get_wm_protocols(&self, window_id: &WindowId) -> Result<Vec<xcb::Atom>, xcb::GenericError> {
+        let reply = icccm::get_wm_protocols(&self.conn, window_id.to_x(), self.atoms.WM_PROTOCOLS)
+            .get_reply()?;
+        Ok(reply.atoms().to_vec())
     }
-
-    // TODO: This, as it'd make the WM_DELETE_WINDOW code a little clearer.
-    // pub fn supports_protocol(&self, window_id, WindowId, atom: Atom) -> bool;
 
     /// Closes a window.
     ///
     /// The window will be closed gracefully using the ICCCM WM_DELETE_WINDOW
     /// protocol if it is supported.
     pub fn close_window(&self, window_id: &WindowId) {
-        let protocols = self.get_wm_protocols(window_id);
-        let has_wm_delete_window = protocols.contains(&"WM_DELETE_WINDOW".to_owned());
+        let protocols = self.get_wm_protocols(window_id).unwrap();
+        let has_wm_delete_window = protocols.contains(&self.atoms.WM_DELETE_WINDOW);
 
         // TODO: Use XDestroyWindow to forcefully close windows that do not support
         // WM_DELETE_WINDOW.
@@ -262,117 +163,82 @@ impl Connection {
             panic!("Not implemented: closing windows that don't expose WM_DELETE_WINDOW");
         }
 
-        let mut client_message = xlib::XClientMessageEvent {
-            type_: xlib::ClientMessage,
-            serial: 0,
-            send_event: 0,
-            display: ptr::null_mut(),
-            window: window_id.to_x(),
-            message_type: self.atoms.WM_PROTOCOLS,
-            format: 32,
-            data: xlib::ClientMessageData::new(),
-        };
-        client_message
-            .data
-            .set_long(0, self.atoms.WM_DELETE_WINDOW as c_long);
-        client_message
-            .data
-            .set_long(1, xlib::CurrentTime as c_long);
-        let mut event = xlib::XEvent::from(client_message);
-        unsafe {
-            xlib::XSendEvent(self.display,
-                             window_id.to_x(),
-                             0,
-                             xlib::NoEventMask,
-                             &mut event);
-        }
+        let data = xcb::ClientMessageData::from_data32([self.atoms.WM_DELETE_WINDOW,
+                                                        xcb::CURRENT_TIME,
+                                                        0,
+                                                        0,
+                                                        0]);
+        let event =
+            xcb::ClientMessageEvent::new(32, window_id.to_x(), self.atoms.WM_PROTOCOLS, data);
+        xcb::send_event(&self.conn,
+                        false,
+                        window_id.to_x(),
+                        xcb::EVENT_MASK_NO_EVENT,
+                        &event);
     }
 
     /// Sets the window's position and size.
-    pub fn configure_window(&self, window_id: &WindowId, x: i32, y: i32, width: i32, height: i32) {
-        let mut changes = xlib::XWindowChanges {
-            x: x,
-            y: y,
-            width: width,
-            height: height,
-
-            // Ignored:
-            border_width: 0,
-            sibling: 0,
-            stack_mode: 0,
-        };
-        let flags = xlib::CWX | xlib::CWY | xlib::CWWidth | xlib::CWHeight;
-
-        unsafe {
-            xlib::XConfigureWindow(self.display, window_id.to_x(), flags as u32, &mut changes);
-        };
+    pub fn configure_window(&self, window_id: &WindowId, x: u32, y: u32, width: u32, height: u32) {
+        let values = [(xcb::CONFIG_WINDOW_X as u16, x),
+                      (xcb::CONFIG_WINDOW_Y as u16, y),
+                      (xcb::CONFIG_WINDOW_WIDTH as u16, width),
+                      (xcb::CONFIG_WINDOW_HEIGHT as u16, height)];
+        xcb::configure_window(&self.conn, window_id.to_x(), &values);
     }
 
     /// Get's the window's width and height.
-    pub fn get_window_geometry(&self, window_id: &WindowId) -> (i32, i32) {
-        unsafe {
-            let mut attrs: xlib::XWindowAttributes = std::mem::zeroed();
-            xlib::XGetWindowAttributes(self.display, window_id.to_x(), &mut attrs);
-
-            (attrs.width, attrs.height)
-        }
+    pub fn get_window_geometry(&self, window_id: &WindowId) -> (u32, u32) {
+        let reply = xcb::get_geometry(&self.conn, window_id.to_x())
+            .get_reply()
+            .unwrap();
+        // Cast as everywhere else uses u32.
+        (reply.width() as u32, reply.height() as u32)
     }
 
     /// Map a window.
     pub fn map_window(&self, window_id: &WindowId) {
-        unsafe {
-            xlib::XMapWindow(self.display, window_id.to_x());
-        }
+        xcb::map_window(&self.conn, window_id.to_x());
     }
 
     /// Unmap a window.
     pub fn unmap_window(&self, window_id: &WindowId) {
-        unsafe {
-            xlib::XUnmapWindow(self.display, window_id.to_x());
-        }
+        xcb::unmap_window(&self.conn, window_id.to_x());
     }
 
     /// Registers for key events.
     pub fn enable_window_key_events(&self, window_id: &WindowId, key_handlers: &KeyHandlers) {
-        unsafe {
-            for key in key_handlers.key_combos() {
-                let keycode = xlib::XKeysymToKeycode(self.display, key.keysym as u64) as i32;
-                xlib::XGrabKey(self.display,
-                               keycode,
-                               key.mod_mask,
-                               window_id.to_x(),
-                               0,
-                               xlib::GrabModeAsync,
-                               xlib::GrabModeAsync);
-            }
+        let key_symbols = KeySymbols::new(&self.conn).expect("Failed to create KeySymbols");
+        for key in key_handlers.key_combos() {
+            let keycode = key_symbols.get_keycode(key.keysym);
+            xcb::grab_key(&self.conn,
+                          false,
+                          window_id.to_x(),
+                          key.mod_mask as u16,
+                          keycode,
+                          xcb::GRAB_MODE_ASYNC as u8,
+                          xcb::GRAB_MODE_ASYNC as u8);
         }
     }
 
     pub fn enable_window_focus_tracking(&self, window_id: &WindowId) {
-        unsafe {
-            xlib::XSelectInput(self.display, window_id.to_x(), xlib::EnterWindowMask);
-        }
+        let values = [(xcb::CW_EVENT_MASK, xcb::EVENT_MASK_ENTER_WINDOW)];
+        xcb::change_window_attributes(&self.conn, window_id.to_x(), &values);
     }
 
     pub fn disable_window_focus_tracking(&self, window_id: &WindowId) {
-        unsafe {
-            xlib::XSelectInput(self.display, window_id.to_x(), 0);
-        }
+        let values = [(xcb::CW_EVENT_MASK, xcb::EVENT_MASK_NO_EVENT)];
+        xcb::change_window_attributes(&self.conn, window_id.to_x(), &values);
     }
 
     pub fn focus_window(&self, window_id: &WindowId) {
-        self.map_window(&window_id);
-        unsafe {
-            xlib::XSetInputFocus(self.display,
-                                 window_id.to_x(),
-                                 xlib::RevertToPointerRoot,
-                                 xlib::CurrentTime);
-            // TODO: _NET_ACTIVE_WINDOW
-        }
+        xcb::set_input_focus(&self.conn,
+                             xcb::INPUT_FOCUS_POINTER_ROOT as u8,
+                             window_id.to_x(),
+                             xcb::CURRENT_TIME);
     }
 
     pub fn get_event_loop(&self) -> EventLoop {
-        EventLoop { connection: &self }
+        EventLoop { connection: self }
     }
 }
 
@@ -398,83 +264,74 @@ impl<'a> Iterator for EventLoop<'a> {
 
     fn next(&mut self) -> Option<Self::Item> {
         loop {
-            unsafe {
-                let mut event = std::mem::zeroed();
-                xlib::XNextEvent(self.connection.display, &mut event);
+            // Flush any pending operations that came out of the event we (might
+            // have) just yielded.
+            self.connection.flush();
 
-                let event = match event.get_type() {
-                    xlib::ConfigureRequest => {
-                        self.on_configure_request(xlib::XConfigureRequestEvent::from(event))
-                    }
-                    // TODO: move most of these handlers up to the window manager. The
-                    // only one that out to stay here is the ConfigureRequest, as we're
-                    // not going to do much with it!
-                    xlib::MapRequest => self.on_map_request(xlib::XMapRequestEvent::from(event)),
-                    xlib::DestroyNotify => {
-                        self.on_destroy_notify(xlib::XDestroyWindowEvent::from(event))
-                    }
-                    xlib::KeyPress => self.on_key_press(xlib::XKeyPressedEvent::from(event)),
-                    xlib::EnterNotify => self.on_enter_notify(xlib::XEnterWindowEvent::from(event)),
-                    _ => {
-                        debug!("Unhandled event: {}", debug::xevent_to_str(&event));
-                        None
-                    }
-                };
+            let event = self.connection
+                .conn
+                .wait_for_event()
+                .expect("wait_for_event() returned None: IO error?");
 
-                if let Some(event) = event {
-                    return Some(event);
+            let propagate = match event.response_type() {
+                xcb::CONFIGURE_REQUEST => self.on_configure_request(xcb::cast_event(&event)),
+                xcb::MAP_REQUEST => self.on_map_request(xcb::cast_event(&event)),
+                xcb::DESTROY_NOTIFY => self.on_destroy_notify(xcb::cast_event(&event)),
+                xcb::KEY_PRESS => self.on_key_press(xcb::cast_event(&event)),
+                xcb::ENTER_NOTIFY => self.on_enter_notify(xcb::cast_event(&event)),
+                _ => {
+                    debug!("Unhandled event: {}", debug::xcb_event_to_str(&event));
+                    None
                 }
+            };
+
+            if let Some(propagate_event) = propagate {
+                return Some(propagate_event);
             }
         }
     }
 }
 
 impl<'a> EventLoop<'a> {
-    fn on_configure_request(&self, event: xlib::XConfigureRequestEvent) -> Option<Event> {
+    fn on_configure_request(&self, event: &xcb::ConfigureRequestEvent) -> Option<Event> {
         // This request is not interesting for us: grant it unchanged.
-        let mut changes = xlib::XWindowChanges {
-            x: event.x,
-            y: event.y,
-            width: event.width,
-            height: event.height,
-            border_width: event.border_width,
-            sibling: event.above,
-            stack_mode: event.detail,
-        };
-
-        unsafe {
-            xlib::XConfigureWindow(self.connection.display,
-                                   event.window,
-                                   event.value_mask as u32,
-                                   &mut changes);
-        }
+        // Build a request with all attributes set, then filter out to only include
+        // those from the original request.
+        let values = vec![(xcb::CONFIG_WINDOW_X as u16, event.x() as u32),
+                          (xcb::CONFIG_WINDOW_Y as u16, event.y() as u32),
+                          (xcb::CONFIG_WINDOW_WIDTH as u16, event.width() as u32),
+                          (xcb::CONFIG_WINDOW_HEIGHT as u16, event.height() as u32),
+                          (xcb::CONFIG_WINDOW_BORDER_WIDTH as u16, event.border_width() as u32),
+                          (xcb::CONFIG_WINDOW_SIBLING as u16, event.sibling() as u32),
+                          (xcb::CONFIG_WINDOW_STACK_MODE as u16, event.stack_mode() as u32)];
+        let filtered_values: Vec<_> = values
+            .into_iter()
+            .filter(|&(mask, _)| mask & event.value_mask() != 0)
+            .collect();
+        xcb::configure_window(&self.connection.conn, event.window(), &filtered_values);
 
         // There's no value in propogating this event.
         None
     }
 
-    fn on_map_request(&self, event: xlib::XMapRequestEvent) -> Option<Event> {
-        Some(Event::MapRequest(WindowId(event.window)))
+    fn on_map_request(&self, event: &xcb::MapRequestEvent) -> Option<Event> {
+        Some(Event::MapRequest(WindowId(event.window())))
     }
 
-    fn on_destroy_notify(&self, event: xlib::XDestroyWindowEvent) -> Option<Event> {
-        Some(Event::DestroyNotify(WindowId(event.window)))
+    fn on_destroy_notify(&self, event: &xcb::DestroyNotifyEvent) -> Option<Event> {
+        Some(Event::DestroyNotify(WindowId(event.window())))
     }
 
-    fn on_key_press(&self, event: xlib::XKeyPressedEvent) -> Option<Event> {
-        let mod_mask = event.state & ModKey::mask_all();
-        let keysym = unsafe {
-            xlib::XKeycodeToKeysym(self.connection.display, event.keycode as c_uchar, 0)
-        } as c_uint;
-        let key = KeyCombo {
-            mod_mask: mod_mask,
-            keysym: keysym,
-        };
-
+    fn on_key_press(&self, event: &xcb::KeyPressEvent) -> Option<Event> {
+        let key_symbols = KeySymbols::new(&self.connection.conn)
+            .expect("Failed to create KeySymbols");
+        let keysym = key_symbols.key_press_lookup_keysym(event, 0);
+        let mod_mask = event.state() as u32 & ModKey::mask_all();
+        let key = KeyCombo { mod_mask, keysym };
         Some(Event::KeyPress(key))
     }
 
-    fn on_enter_notify(&self, event: xlib::XEnterWindowEvent) -> Option<Event> {
-        Some(Event::EnterNotify(WindowId(event.window)))
+    fn on_enter_notify(&self, event: &xcb::EnterNotifyEvent) -> Option<Event> {
+        Some(Event::EnterNotify(WindowId(event.event())))
     }
 }
