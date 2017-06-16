@@ -30,9 +30,10 @@ impl<T> Stack<T> {
     where
         P: FnMut(&T) -> bool,
     {
-        let position = self.vec.iter().position(p).expect(
-            "No element in stack matches predicate",
-        );
+        let position = self.vec
+            .iter()
+            .position(p)
+            .expect("No element in stack matches predicate");
         let element = self.vec.remove(position);
         // Focus might now be pointing at the wrong element. If we
         self.fix_focus_after_removal(position);
@@ -53,12 +54,12 @@ impl<T> Stack<T> {
     fn fix_focus_after_removal(&mut self, removed_idx: usize) {
         self.focus = self.focus
             .and_then(|idx| if self.vec.is_empty() { None } else { Some(idx) })
-            .map(|idx| if idx > removed_idx ||
-                (idx == removed_idx && idx == self.vec.len())
-            {
-                idx - 1
-            } else {
-                idx
+            .map(|idx| {
+                if idx > removed_idx || (idx == removed_idx && idx == self.vec.len()) {
+                    idx - 1
+                } else {
+                    idx
+                }
             });
     }
 
@@ -107,16 +108,16 @@ impl<T> Stack<T> {
     where
         P: FnMut(&T) -> bool,
     {
-        let position = self.vec.iter().position(p).expect(
-            "No element in stack matches predicate",
-        );
+        let position = self.vec
+            .iter()
+            .position(p)
+            .expect("No element in stack matches predicate");
         self.focus = Some(position);
     }
 
     fn ensure_focus(&mut self) {
-        self.focus = self.focus.or(
-            if self.vec.is_empty() { None } else { Some(0) },
-        );
+        self.focus = self.focus
+            .or(if self.vec.is_empty() { None } else { Some(0) });
     }
 
     fn next_index(&self, index: usize) -> usize {

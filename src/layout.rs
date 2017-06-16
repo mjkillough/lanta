@@ -98,9 +98,9 @@ impl Layout for StackLayout {
 
         {
             let unfocused = stack.filter(|window| {
-                focused.as_ref().map_or(true, |focused_window| {
-                    window.id() != focused_window.id()
-                })
+                focused
+                    .as_ref()
+                    .map_or(true, |focused_window| window.id() != focused_window.id())
             });
             for window in unfocused {
                 window.without_focus_tracking(|window| window.unmap());

@@ -84,14 +84,14 @@ impl Group {
                 window_id: &window_id,
             }
         });
-        self.layouts.focused().map(|l| {
-            l.layout(&self.viewport, focused, self.iter())
-        });
+        self.layouts
+            .focused()
+            .map(|l| l.layout(&self.viewport, focused, self.iter()));
 
         // Tell X to focus the focused window for this group.
-        self.stack.focused().map(|window_id| {
-            self.connection.focus_window(&window_id)
-        });
+        self.stack
+            .focused()
+            .map(|window_id| self.connection.focus_window(&window_id));
     }
 
     pub fn add_window(&mut self, window_id: WindowId) {

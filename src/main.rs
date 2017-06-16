@@ -19,11 +19,11 @@ use x11::keysym;
 
 
 fn main() {
-    let xdg_dirs =
-        xdg::BaseDirectories::with_prefix("lanta").expect("Could not create xdg BaseDirectories");
-    let log_path = xdg_dirs.place_data_file("lanta.log").expect(
-        "Could not create log file",
-    );
+    let xdg_dirs = xdg::BaseDirectories::with_prefix("lanta")
+        .expect("Could not create xdg BaseDirectories");
+    let log_path = xdg_dirs
+        .place_data_file("lanta.log")
+        .expect("Could not create log file");
 
     let logger_config = fern::DispatchConfig {
         format: Box::new(|msg: &str,

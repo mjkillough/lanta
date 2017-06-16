@@ -359,9 +359,10 @@ impl<'a> Iterator for EventLoop<'a> {
             // have) just yielded.
             self.connection.flush();
 
-            let event = self.connection.conn.wait_for_event().expect(
-                "wait_for_event() returned None: IO error?",
-            );
+            let event = self.connection
+                .conn
+                .wait_for_event()
+                .expect("wait_for_event() returned None: IO error?");
 
             let propagate = match event.response_type() {
                 xcb::CONFIGURE_REQUEST => self.on_configure_request(xcb::cast_event(&event)),

@@ -135,9 +135,8 @@ impl RustWindowManager {
     }
 
     fn viewport(&self) -> Viewport {
-        let (width, height) = self.connection.get_window_geometry(
-            self.connection.root_window_id(),
-        );
+        let (width, height) = self.connection
+            .get_window_geometry(self.connection.root_window_id());
         self.docks.viewport(width, height)
     }
 
