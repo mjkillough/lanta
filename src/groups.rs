@@ -67,7 +67,7 @@ impl Group {
     pub fn deactivate(&mut self) {
         info!("Deactivating group: {}", self.name());
         for window in self.iter() {
-            window.unmap();
+            window.without_tracking(|w| w.unmap());
         }
         self.active = false;
     }
