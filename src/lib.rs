@@ -198,6 +198,8 @@ impl RustWindowManager {
     }
 
     pub fn add_window(&mut self, window_id: WindowId) {
+        debug!("Managing window: {}", window_id);
+
         let window_types = self.connection.get_window_types(&window_id);
         let dock = window_types.contains(&WindowType::Dock);
 
@@ -236,6 +238,8 @@ impl RustWindowManager {
     }
 
     fn on_destroy_notify(&mut self, window_id: WindowId) {
+        debug!("Unmanaging window: {}", window_id);
+
         // Remove the window from whichever Group it is in. Special case for
         // docks which aren't in any group.
         self.groups

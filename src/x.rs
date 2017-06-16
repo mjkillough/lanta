@@ -370,10 +370,7 @@ impl<'a> Iterator for EventLoop<'a> {
                 xcb::DESTROY_NOTIFY => self.on_destroy_notify(xcb::cast_event(&event)),
                 xcb::KEY_PRESS => self.on_key_press(xcb::cast_event(&event)),
                 xcb::ENTER_NOTIFY => self.on_enter_notify(xcb::cast_event(&event)),
-                _ => {
-                    debug!("Unhandled event: {}", debug::xcb_event_to_str(&event));
-                    None
-                }
+                _ => None,
             };
 
             if let Some(propagate_event) = propagate {

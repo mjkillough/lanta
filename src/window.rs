@@ -30,14 +30,6 @@ pub trait Window {
 
     /// Sets the window's position and size.
     fn configure(&self, x: u32, y: u32, width: u32, height: u32) {
-        debug!(
-            "Configuring window: {} (x={}, y={}, width={}, height={})",
-            self.id(),
-            x,
-            y,
-            width,
-            height
-        );
         self.connection().configure_window(
             self.id(),
             x,
