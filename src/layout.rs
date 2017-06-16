@@ -61,7 +61,7 @@ impl Layout for TiledLayout {
         let tile_height = viewport.height / stack.len() as u32;
 
         for (i, window) in stack.enumerate() {
-            window.without_focus_tracking(|window| {
+            window.without_tracking(|window| {
                 window.map();
                 window.configure(
                     viewport.x,
@@ -103,11 +103,11 @@ impl Layout for StackLayout {
                     .map_or(true, |focused_window| window.id() != focused_window.id())
             });
             for window in unfocused {
-                window.without_focus_tracking(|window| window.unmap());
+                window.without_tracking(|window| window.unmap());
             }
         }
         focused.map(|window| {
-            window.without_focus_tracking(|window| {
+            window.without_tracking(|window| {
                 window.map();
                 window.configure(viewport.x, viewport.y, viewport.width, viewport.height);
             })

@@ -125,7 +125,7 @@ impl RustWindowManager {
         // Learn about existing top-level windows.
         let existing_windows = connection.top_level_windows().unwrap();
         for window in existing_windows {
-            wm.add_window(window);
+            wm.manage_window(window);
         }
         let viewport = wm.viewport();
         wm.group_mut().activate(viewport);
@@ -197,8 +197,21 @@ impl RustWindowManager {
         }
     }
 
-    pub fn add_window(&mut self, window_id: WindowId) {
+    pub fn manage_window(&mut self, window_id: WindowId) {
         debug!("Managing window: {}", window_id);
+
+        // If we are already managing the window, then do nothing.
+        // This may result in some undesireableness, in that we don't move
+        // it to the currently focused group when it's remapped, but it shouldn't
+        // be too bad.
+        let already_managed = self.groups.iter().any(|g| g.contains(&window_id));
+        if already_managed {
+            warn!(
+                "Asked to manage window that's already managed: {}",
+                window_id
+            );
+            return;
+        }
 
         let window_types = self.connection.get_window_types(&window_id);
         let dock = window_types.contains(&WindowType::Dock);
@@ -213,31 +226,12 @@ impl RustWindowManager {
             let viewport = self.viewport();
             self.group_mut().update_viewport(viewport);
         } else {
-            self.connection.enable_window_focus_tracking(&window_id);
+            self.connection.enable_window_tracking(&window_id);
             self.group_mut().add_window(window_id);
         }
     }
 
-    pub fn run_event_loop(&mut self) {
-        let event_loop_connection = self.connection.clone();
-        let event_loop = event_loop_connection.get_event_loop();
-        for event in event_loop {
-            match event {
-                Event::MapRequest(window_id) => self.on_map_request(window_id),
-                Event::DestroyNotify(window_id) => self.on_destroy_notify(window_id),
-                Event::KeyPress(key) => self.on_key_press(key),
-                Event::EnterNotify(window_id) => self.on_enter_notify(window_id),
-            }
-        }
-        info!("Event loop exiting");
-    }
-
-    fn on_map_request(&mut self, window_id: WindowId) {
-        self.connection.map_window(&window_id);
-        self.add_window(window_id);
-    }
-
-    fn on_destroy_notify(&mut self, window_id: WindowId) {
+    pub fn unmanage_window(&mut self, window_id: WindowId) {
         debug!("Unmanaging window: {}", window_id);
 
         // Remove the window from whichever Group it is in. Special case for
@@ -251,6 +245,37 @@ impl RustWindowManager {
         // The viewport may have changed.
         let viewport = self.viewport();
         self.group_mut().update_viewport(viewport);
+    }
+
+    pub fn run_event_loop(&mut self) {
+        let event_loop_connection = self.connection.clone();
+        let event_loop = event_loop_connection.get_event_loop();
+        for event in event_loop {
+            match event {
+                Event::MapRequest(window_id) => self.on_map_request(window_id),
+                Event::UnmapNotify(window_id) => self.on_unmap_notify(window_id),
+                Event::DestroyNotify(window_id) => self.on_destroy_notify(window_id),
+                Event::KeyPress(key) => self.on_key_press(key),
+                Event::EnterNotify(window_id) => self.on_enter_notify(window_id),
+            }
+        }
+        info!("Event loop exiting");
+    }
+
+    fn on_map_request(&mut self, window_id: WindowId) {
+        self.connection.map_window(&window_id);
+        self.manage_window(window_id);
+    }
+
+    fn on_unmap_notify(&mut self, window_id: WindowId) {
+        // We only receive an unmap notify event when the window is actually
+        // unmapped by its application. When our layouts unmap windows, they
+        // (should) do it by disabling event tracking first.
+        self.unmanage_window(window_id);
+    }
+
+    fn on_destroy_notify(&mut self, window_id: WindowId) {
+        self.unmanage_window(window_id);
     }
 
     fn on_key_press(&mut self, key: KeyCombo) {

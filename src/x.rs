@@ -308,12 +308,17 @@ impl Connection {
         }
     }
 
-    pub fn enable_window_focus_tracking(&self, window_id: &WindowId) {
-        let values = [(xcb::CW_EVENT_MASK, xcb::EVENT_MASK_ENTER_WINDOW)];
+    pub fn enable_window_tracking(&self, window_id: &WindowId) {
+        let values = [
+            (
+                xcb::CW_EVENT_MASK,
+                xcb::EVENT_MASK_ENTER_WINDOW | xcb::EVENT_MASK_STRUCTURE_NOTIFY,
+            ),
+        ];
         xcb::change_window_attributes(&self.conn, window_id.to_x(), &values);
     }
 
-    pub fn disable_window_focus_tracking(&self, window_id: &WindowId) {
+    pub fn disable_window_tracking(&self, window_id: &WindowId) {
         let values = [(xcb::CW_EVENT_MASK, xcb::EVENT_MASK_NO_EVENT)];
         xcb::change_window_attributes(&self.conn, window_id.to_x(), &values);
     }
@@ -337,6 +342,7 @@ impl Connection {
 /// Events received from the `EventLoop`.
 pub enum Event {
     MapRequest(WindowId),
+    UnmapNotify(WindowId),
     DestroyNotify(WindowId),
     KeyPress(KeyCombo),
     EnterNotify(WindowId),
@@ -367,6 +373,7 @@ impl<'a> Iterator for EventLoop<'a> {
             let propagate = match event.response_type() {
                 xcb::CONFIGURE_REQUEST => self.on_configure_request(xcb::cast_event(&event)),
                 xcb::MAP_REQUEST => self.on_map_request(xcb::cast_event(&event)),
+                xcb::UNMAP_NOTIFY => self.on_unmap_notify(xcb::cast_event(&event)),
                 xcb::DESTROY_NOTIFY => self.on_destroy_notify(xcb::cast_event(&event)),
                 xcb::KEY_PRESS => self.on_key_press(xcb::cast_event(&event)),
                 xcb::ENTER_NOTIFY => self.on_enter_notify(xcb::cast_event(&event)),
@@ -412,6 +419,18 @@ impl<'a> EventLoop<'a> {
 
     fn on_map_request(&self, event: &xcb::MapRequestEvent) -> Option<Event> {
         Some(Event::MapRequest(WindowId(event.window())))
+    }
+
+    fn on_unmap_notify(&self, event: &xcb::UnmapNotifyEvent) -> Option<Event> {
+        // Ignore UnmapNotify events that come from our SUBSTRUCTURE_NOTIFY mask
+        // on the root window. We are interested only in the events that come from
+        // the windows themselves, which allows our `Connection::disable_window_tracking()`
+        // to stop us seeing unwanted UnmapNotify events.
+        if event.event() != self.connection.root_window_id().to_x() {
+            Some(Event::UnmapNotify(WindowId(event.window())))
+        } else {
+            None
+        }
     }
 
     fn on_destroy_notify(&self, event: &xcb::DestroyNotifyEvent) -> Option<Event> {
