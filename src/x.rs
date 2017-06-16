@@ -293,9 +293,9 @@ impl Connection {
 
     /// Registers for key events.
     pub fn enable_window_key_events(&self, window_id: &WindowId, key_handlers: &KeyHandlers) {
-        let key_symbols = KeySymbols::new(&self.conn).expect("Failed to create KeySymbols");
+        let key_symbols = KeySymbols::new(&self.conn);
         for key in key_handlers.key_combos() {
-            let keycode = key_symbols.get_keycode(key.keysym);
+            let keycode = key_symbols.get_keycode(key.keysym).next().unwrap();
             xcb::grab_key(
                 &self.conn,
                 false,
@@ -421,9 +421,8 @@ impl<'a> EventLoop<'a> {
     }
 
     fn on_key_press(&self, event: &xcb::KeyPressEvent) -> Option<Event> {
-        let key_symbols =
-            KeySymbols::new(&self.connection.conn).expect("Failed to create KeySymbols");
-        let keysym = key_symbols.key_press_lookup_keysym(event, 0);
+        let key_symbols = KeySymbols::new(&self.connection.conn);
+        let keysym = key_symbols.press_lookup_keysym(event, 0);
         let mod_mask = event.state() as u32 & ModKey::mask_all();
         let key = KeyCombo { mod_mask, keysym };
         Some(Event::KeyPress(key))
