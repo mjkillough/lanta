@@ -154,6 +154,12 @@ impl RustWindowManager {
         S: Into<&'a str>,
     {
         let name = name.into();
+
+        // If we're already on this group, do nothing.
+        if self.group().name() == name {
+            return;
+        }
+
         self.group_mut().deactivate();
         self.groups.focus(|group| group.name() == name);
         let viewport = self.viewport();
