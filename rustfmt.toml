@@ -1,8 +1,1 @@
 write_mode = "Overwrite"
-
-normalize_comments = true
-reorder_imported_names = true
-use_try_shorthand = true
-where_density = "Tall"
-wrap_comments = true
-take_source_hints = true
