@@ -88,10 +88,12 @@ impl Group {
             .focused()
             .map(|l| l.layout(&self.viewport, focused, self.iter()));
 
-        // Tell X to focus the focused window for this group.
-        self.stack
-            .focused()
-            .map(|window_id| self.connection.focus_window(&window_id));
+        // Tell X to focus the focused window for this group, or to unset
+        // it's focus if we have no windows.
+        match self.stack.focused() {
+            Some(window_id) => self.connection.focus_window(&window_id),
+            None => self.connection.focus_nothing(),
+        }
     }
 
     pub fn add_window(&mut self, window_id: WindowId) {

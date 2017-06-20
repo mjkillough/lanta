@@ -332,6 +332,11 @@ impl Connection {
         ewmh::set_active_window(&self.conn, self.screen_idx, window_id.to_x());
     }
 
+    /// Unsets EWMH's _NET_ACTIVE_WINDOW to indicate there is no active window.
+    pub fn focus_nothing(&self) {
+        ewmh::set_active_window(&self.conn, self.screen_idx, xcb::NONE);
+    }
+
     pub fn get_event_loop(&self) -> EventLoop {
         EventLoop { connection: self }
     }
