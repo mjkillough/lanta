@@ -8,11 +8,16 @@ name = "lanta"
 doc = false
 
 [dependencies]
+error-chain = "0.10"
 fern = "0.3.5"
 libc = "0.2.21"
 log = "0.3.7"
 time = "0.1.37"
 x11 = "2.12.1"
-xcb = "0.7.6"
+xcb = { version = "0.7.6", features = ["thread"] }
 xcb-util = { version = "0.1.8", features = ["ewmh", "icccm", "keysyms"] }
 xdg = "2.1.0"
+
+[replace]
+# Custom patch, not yet upstreamed:
+"xcb:0.7.6" = { git = "https://github.com/mjkillough/rust-xcb.git", branch = "error_trait" }

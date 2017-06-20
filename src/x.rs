@@ -6,6 +6,7 @@ use xcb_util::{ewmh, icccm};
 use xcb_util::keysyms::KeySymbols;
 
 use debug;
+use errors::*;
 use keys::{KeyCombo, KeyHandlers, ModKey};
 use groups::Group;
 use stack::Stack;
@@ -60,7 +61,7 @@ macro_rules! atoms {
         }
 
         impl InternedAtoms {
-            pub fn new(conn: &xcb::Connection) -> Result<InternedAtoms, xcb::GenericError> {
+            pub fn new(conn: &xcb::Connection) -> Result<InternedAtoms> {
                 Ok(InternedAtoms {
                     $(
                         $name: Connection::intern_atom(conn, stringify!($name))?
@@ -91,9 +92,10 @@ pub struct Connection {
 
 impl Connection {
     /// Opens a connection to the X server, returning a new Connection object.
-    pub fn connect() -> Result<Connection, String> {
-        let (conn, screen_idx) = xcb::Connection::connect(None).unwrap();
-        let conn = ewmh::Connection::connect(conn).map_err(|_| ()).unwrap();
+    pub fn connect() -> Result<Connection> {
+        let (conn, screen_idx) = xcb::Connection::connect(None)
+            .chain_err(|| "Failed to connect to X server")?;
+        let conn = ewmh::Connection::connect(conn).map_err(|(e, _)| e)?;
         let root = conn.get_setup()
             .roots()
             .nth(screen_idx as usize)
@@ -131,10 +133,7 @@ impl Connection {
     }
 
     /// Returns the Atom identifier associated with the atom_name str.
-    fn intern_atom(
-        conn: &xcb::Connection,
-        atom_name: &str,
-    ) -> Result<xcb::Atom, xcb::GenericError> {
+    fn intern_atom(conn: &xcb::Connection, atom_name: &str) -> Result<xcb::Atom> {
         Ok(xcb::intern_atom(conn, false, atom_name).get_reply()?.atom())
     }
 
@@ -146,7 +145,7 @@ impl Connection {
     /// SubstructureNotify and SubstructureRedirect events on the root window.
     /// If there is already a window manager on the display, then this will
     /// fail.
-    pub fn install_as_wm(&self, key_handlers: &KeyHandlers) -> Result<(), String> {
+    pub fn install_as_wm(&self, key_handlers: &KeyHandlers) -> Result<()> {
         let values = [
             (
                 xcb::CW_EVENT_MASK,
@@ -189,7 +188,7 @@ impl Connection {
         };
     }
 
-    pub fn top_level_windows(&self) -> Result<Vec<WindowId>, xcb::GenericError> {
+    pub fn top_level_windows(&self) -> Result<Vec<WindowId>> {
         let windows = xcb::query_tree(&self.conn, self.root.to_x())
             .get_reply()?
             .children()
@@ -201,10 +200,7 @@ impl Connection {
 
     /// Queries the WM_PROTOCOLS property of a window, returning a list of the
     /// protocols that it supports.
-    // TODO: Have this return a list of atoms, rather than a list of strings.
-    // (Perhaps we should
-    // have a separate function to convert to a list of strings for debugging?)
-    fn get_wm_protocols(&self, window_id: &WindowId) -> Result<Vec<xcb::Atom>, xcb::GenericError> {
+    fn get_wm_protocols(&self, window_id: &WindowId) -> Result<Vec<xcb::Atom>> {
         let reply = icccm::get_wm_protocols(&self.conn, window_id.to_x(), self.atoms.WM_PROTOCOLS)
             .get_reply()?;
         Ok(reply.atoms().to_vec())
@@ -237,8 +233,9 @@ impl Connection {
     /// The window will be closed gracefully using the ICCCM WM_DELETE_WINDOW
     /// protocol if it is supported.
     pub fn close_window(&self, window_id: &WindowId) {
-        let protocols = self.get_wm_protocols(window_id).unwrap();
-        let has_wm_delete_window = protocols.contains(&self.atoms.WM_DELETE_WINDOW);
+        let has_wm_delete_window = self.get_wm_protocols(window_id)
+            .map(|protocols| protocols.contains(&self.atoms.WM_DELETE_WINDOW))
+            .unwrap_or(false);
 
         if has_wm_delete_window {
             info!("Closing window {} using WM_DELETE", window_id);
@@ -291,19 +288,31 @@ impl Connection {
     }
 
     /// Registers for key events.
+    ///
+    /// If it fails to register any of the keys, it will log an error and continue.
     pub fn enable_window_key_events(&self, window_id: &WindowId, key_handlers: &KeyHandlers) {
         let key_symbols = KeySymbols::new(&self.conn);
         for key in key_handlers.key_combos() {
-            let keycode = key_symbols.get_keycode(key.keysym).next().unwrap();
-            xcb::grab_key(
-                &self.conn,
-                false,
-                window_id.to_x(),
-                key.mod_mask as u16,
-                keycode,
-                xcb::GRAB_MODE_ASYNC as u8,
-                xcb::GRAB_MODE_ASYNC as u8,
-            );
+            match key_symbols.get_keycode(key.keysym).next() {
+                Some(keycode) => {
+                    xcb::grab_key(
+                        &self.conn,
+                        false,
+                        window_id.to_x(),
+                        key.mod_mask as u16,
+                        keycode,
+                        xcb::GRAB_MODE_ASYNC as u8,
+                        xcb::GRAB_MODE_ASYNC as u8,
+                    );
+                }
+                None => {
+                    error!(
+                        "Failed to get keycode for keysym {} - could not register handler on {}",
+                        key.keysym,
+                        window_id
+                    );
+                }
+            }
         }
     }
 

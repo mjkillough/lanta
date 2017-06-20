@@ -1,14 +1,17 @@
 #[macro_use]
+extern crate error_chain;
+#[macro_use]
 extern crate lanta;
 
 use std::process::Command;
 
 use lanta::{cmd, Lanta, ModKey};
+use lanta::errors::*;
 use lanta::layout::*;
 
 
-fn main() {
-    lanta::intiailize_logger();
+fn run() -> Result<()> {
+    lanta::intiailize_logger()?;
 
     let modkey = ModKey::Control;
     let shift = ModKey::Shift;
@@ -46,5 +49,9 @@ fn main() {
         ]
     };
 
-    Lanta::new(keys, groups, layouts).unwrap().run();
+    Lanta::new(keys, groups, layouts)?.run();
+
+    Ok(())
 }
+
+quick_main!(run);

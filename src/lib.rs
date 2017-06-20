@@ -1,5 +1,7 @@
 // #![deny(warnings)]
 
+#[macro_use]
+extern crate error_chain;
 extern crate fern;
 #[macro_use]
 extern crate log;
@@ -15,6 +17,7 @@ use std::rc::Rc;
 
 pub mod cmd;
 mod debug;
+pub mod errors;
 mod groups;
 mod keys;
 pub mod layout;
@@ -22,6 +25,7 @@ mod stack;
 mod window;
 mod x;
 
+use errors::*;
 use groups::Group;
 use keys::{KeyCombo, KeyHandlers};
 use layout::Layout;
@@ -40,12 +44,11 @@ pub mod keysym {
 ///
 /// Outputs to stdout and $XDG_DATA/lanta/lanta.log by default.
 /// You should feel free to initialize your own logger, instead of using this.
-pub fn intiailize_logger() {
-    let xdg_dirs = xdg::BaseDirectories::with_prefix("lanta")
-        .expect("Could not create xdg BaseDirectories");
+pub fn intiailize_logger() -> Result<()> {
+    let xdg_dirs = xdg::BaseDirectories::with_prefix("lanta")?;
     let log_path = xdg_dirs
         .place_data_file("lanta.log")
-        .expect("Could not create log file");
+        .chain_err(|| "Could not create log file")?;
 
     let logger_config = fern::DispatchConfig {
         format: Box::new(
@@ -59,9 +62,10 @@ pub fn intiailize_logger() {
         ],
         level: log::LogLevelFilter::Trace,
     };
-    if let Err(e) = fern::init_global_logger(logger_config, log::LogLevelFilter::Trace) {
-        panic!("Failed to initialize global logger: {}", e);
-    }
+    Ok(fern::init_global_logger(
+        logger_config,
+        log::LogLevelFilter::Trace,
+    )?)
 }
 
 
@@ -167,11 +171,7 @@ pub struct Lanta {
 }
 
 impl Lanta {
-    pub fn new<K>(
-        keys: K,
-        groups: Vec<GroupBuilder>,
-        layouts: Vec<Box<Layout>>,
-    ) -> Result<Self, String>
+    pub fn new<K>(keys: K, groups: Vec<GroupBuilder>, layouts: Vec<Box<Layout>>) -> Result<Self>
     where
         K: Into<KeyHandlers>,
     {
@@ -196,7 +196,7 @@ impl Lanta {
         };
 
         // Learn about existing top-level windows.
-        let existing_windows = connection.top_level_windows().unwrap();
+        let existing_windows = connection.top_level_windows()?;
         for window in existing_windows {
             wm.manage_window(window);
         }
@@ -214,11 +214,13 @@ impl Lanta {
     }
 
     pub fn group(&self) -> &Group {
-        self.groups.focused().expect("No active group!")
+        self.groups.focused().expect("Invariant: No active group!")
     }
 
     pub fn group_mut(&mut self) -> &mut Group {
-        self.groups.focused_mut().expect("No active group!")
+        self.groups
+            .focused_mut()
+            .expect("Invariant: No active group!")
     }
 
     pub fn switch_group<'a, S>(&'a mut self, name: S)
