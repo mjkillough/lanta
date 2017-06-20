@@ -68,7 +68,7 @@ In the default configuration, the following short-cuts are available:
  - `Mod4 + v` — Open Visual Studio Code
  - `Mod4 + q` — Change wallpaper using my [`change-wallpaper`](https://github.com/mjkillough/change-wallpaper) script.
 
-... where `Mod4` is usually the Cmd/Windows/Super key. As described below, it's expected you'll make your own configuration, rather than using mine.
+... where `Mod4` is usually the Cmd/Windows/Super key. As described in the [installation section](#installing), it's expected you'll make your own configuration, rather than using mine.
 
 
 ## Tests
