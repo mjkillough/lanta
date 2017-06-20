@@ -26,11 +26,11 @@ fn main() {
         .expect("Could not create log file");
 
     let logger_config = fern::DispatchConfig {
-        format: Box::new(|msg: &str,
-         level: &log::LogLevel,
-         _location: &log::LogLocation| {
-            format!("[{}] [{}] {}", time::now().rfc3339(), level, msg)
-        }),
+        format: Box::new(
+            |msg: &str, level: &log::LogLevel, _location: &log::LogLocation| {
+                format!("[{}] [{}] {}", time::now().rfc3339(), level, msg)
+            },
+        ),
         output: vec![
             fern::OutputConfig::stdout(),
             fern::OutputConfig::file(&log_path),
@@ -41,7 +41,7 @@ fn main() {
         panic!("Failed to initialize global logger: {}", e);
     }
 
-    let modkey = ModKey::Control;
+    let modkey = ModKey::Mod4;
     let shift = ModKey::Shift;
     let mut keys = vec![
         (
@@ -80,7 +80,7 @@ fn main() {
         ),
     ];
 
-    let padding = 10;
+    let padding = 20;
     let layouts = vec![
         StackLayout::new("stack-padded", padding),
         StackLayout::new("stack", 0),

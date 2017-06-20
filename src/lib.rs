@@ -216,10 +216,8 @@ impl RustWindowManager {
         let window_types = self.connection.get_window_types(&window_id);
         let dock = window_types.contains(&WindowType::Dock);
 
-        self.connection.enable_window_key_events(
-            &window_id,
-            &self.keys,
-        );
+        self.connection
+            .enable_window_key_events(&window_id, &self.keys);
 
         if dock {
             self.docks.add(&self.connection, window_id);
