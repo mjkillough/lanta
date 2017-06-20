@@ -69,7 +69,13 @@ macro_rules! keys {
 
 #[macro_export]
 macro_rules! groups {
-    { $keys:ident, [$(( [$( $modkey:ident ),+], $key:ident, $name:expr, $layout:expr )),+ $(,)*] }  => {{
+    {
+        $keys:ident,
+        [
+            $(( [$( $modkey:ident ),+], $key:ident, $name:expr, $layout:expr )),+
+            $(,)*
+        ]
+    }  => {{
         $keys.extend(keys![
             $(
                 ([$($modkey),+], $key, cmd::lazy::switch_group($name))
