@@ -1,17 +1,10 @@
 #[macro_use]
-extern crate log;
-extern crate x11;
-
-#[macro_use]
 extern crate lanta;
 
 use std::process::Command;
 
-use lanta::{cmd, Lanta};
-use lanta::groups::GroupBuilder;
-use lanta::keys::ModKey;
-use lanta::layout::{StackLayout, TiledLayout};
-pub use x11::keysym;
+use lanta::{cmd, Lanta, ModKey};
+use lanta::layout::*;
 
 
 fn main() {

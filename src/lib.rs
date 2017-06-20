@@ -5,6 +5,7 @@ extern crate fern;
 extern crate log;
 extern crate libc;
 extern crate time;
+extern crate x11;
 extern crate xcb;
 extern crate xcb_util;
 extern crate xdg;
@@ -14,18 +15,25 @@ use std::rc::Rc;
 
 pub mod cmd;
 mod debug;
-pub mod groups;
-pub mod keys;
+mod groups;
+mod keys;
 pub mod layout;
 mod stack;
-pub mod window;
-pub mod x;
+mod window;
+mod x;
 
-use groups::{Group, GroupBuilder};
+use groups::Group;
 use keys::{KeyCombo, KeyHandlers};
 use layout::Layout;
 use stack::Stack;
 use x::{Connection, Event, StrutPartial, WindowId, WindowType};
+
+pub use groups::GroupBuilder;
+pub use keys::ModKey;
+
+pub mod keysym {
+    pub use x11::keysym::*;
+}
 
 
 /// Initializes a logger using the default configuration.
@@ -61,7 +69,7 @@ pub fn intiailize_logger() {
 macro_rules! keys {
     [ $( ([$( $mod:ident ),+], $key:ident, $cmd:expr) ),+ $(,)*] => (
         vec![
-            $( (vec![$( $mod ),+], ::x11::keysym::$key, $cmd) ),+
+            $( (vec![$( $mod ),+], ::lanta::keysym::$key, $cmd) ),+
         ]
     )
 }
@@ -78,12 +86,12 @@ macro_rules! groups {
     }  => {{
         $keys.extend(keys![
             $(
-                ([$($modkey),+], $key, cmd::lazy::switch_group($name))
+                ([$($modkey),+], $key, ::lanta::cmd::lazy::switch_group($name))
             ),+
         ]);
         vec![
             $(
-                GroupBuilder::new($name, $layout)
+                ::lanta::GroupBuilder::new($name, $layout)
             ),+
         ]
     }}
