@@ -57,6 +57,33 @@ pub fn intiailize_logger() {
 }
 
 
+#[macro_export]
+macro_rules! keys {
+    [ $( ([$( $mod:ident ),+], $key:ident, $cmd:expr) ),+ $(,)*] => (
+        vec![
+            $( (vec![$( $mod ),+], ::x11::keysym::$key, $cmd) ),+
+        ]
+    )
+}
+
+
+#[macro_export]
+macro_rules! groups {
+    { $keys:ident, [$(( [$( $modkey:ident ),+], $key:ident, $name:expr, $layout:expr )),+ $(,)*] }  => {{
+        $keys.extend(keys![
+            $(
+                ([$($modkey),+], $key, cmd::lazy::switch_group($name))
+            ),+
+        ]);
+        vec![
+            $(
+                GroupBuilder::new($name, $layout)
+            ),+
+        ]
+    }}
+}
+
+
 #[derive(Clone, Copy, Debug, Default)]
 pub struct Viewport {
     pub x: u32,

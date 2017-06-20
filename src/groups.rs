@@ -15,10 +15,14 @@ pub struct GroupBuilder {
 }
 
 impl GroupBuilder {
-    pub fn new(name: String, default_layout: String) -> GroupBuilder {
+    pub fn new<S1, S2>(name: S1, default_layout: S2) -> GroupBuilder
+    where
+        S1: Into<String>,
+        S2: Into<String>,
+    {
         GroupBuilder {
-            name,
-            default_layout,
+            name: name.into(),
+            default_layout: default_layout.into(),
         }
     }
 
