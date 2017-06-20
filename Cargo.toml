@@ -3,13 +3,8 @@ name = "lanta"
 version = "0.1.0"
 authors = ["Michael Killough <michaeljkillough@gmail.com>"]
 
-[lib]
-name = "lanta"
-path = "src/lib.rs"
-
 [[bin]]
 name = "lanta"
-path = "src/main.rs"
 doc = false
 
 [dependencies]

@@ -1,10 +1,13 @@
 // #![deny(warnings)]
 
+extern crate fern;
 #[macro_use]
 extern crate log;
 extern crate libc;
+extern crate time;
 extern crate xcb;
 extern crate xcb_util;
+extern crate xdg;
 
 use std::cmp;
 use std::rc::Rc;
@@ -23,6 +26,35 @@ use keys::{KeyCombo, KeyHandlers};
 use layout::Layout;
 use stack::Stack;
 use x::{Connection, Event, StrutPartial, WindowId, WindowType};
+
+
+/// Initializes a logger using the default configuration.
+///
+/// Outputs to stdout and $XDG_DATA/lanta/lanta.log by default.
+/// You should feel free to initialize your own logger, instead of using this.
+pub fn intiailize_logger() {
+    let xdg_dirs = xdg::BaseDirectories::with_prefix("lanta")
+        .expect("Could not create xdg BaseDirectories");
+    let log_path = xdg_dirs
+        .place_data_file("lanta.log")
+        .expect("Could not create log file");
+
+    let logger_config = fern::DispatchConfig {
+        format: Box::new(
+            |msg: &str, level: &log::LogLevel, _location: &log::LogLocation| {
+                format!("[{}] [{}] {}", time::now().rfc3339(), level, msg)
+            },
+        ),
+        output: vec![
+            fern::OutputConfig::stdout(),
+            fern::OutputConfig::file(&log_path),
+        ],
+        level: log::LogLevelFilter::Trace,
+    };
+    if let Err(e) = fern::init_global_logger(logger_config, log::LogLevelFilter::Trace) {
+        panic!("Failed to initialize global logger: {}", e);
+    }
+}
 
 
 #[derive(Clone, Copy, Debug, Default)]

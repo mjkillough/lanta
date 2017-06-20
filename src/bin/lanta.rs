@@ -1,9 +1,6 @@
-extern crate fern;
 #[macro_use]
 extern crate log;
-extern crate time;
 extern crate x11;
-extern crate xdg;
 
 
 extern crate lanta;
@@ -19,27 +16,7 @@ use x11::keysym;
 
 
 fn main() {
-    let xdg_dirs = xdg::BaseDirectories::with_prefix("lanta")
-        .expect("Could not create xdg BaseDirectories");
-    let log_path = xdg_dirs
-        .place_data_file("lanta.log")
-        .expect("Could not create log file");
-
-    let logger_config = fern::DispatchConfig {
-        format: Box::new(
-            |msg: &str, level: &log::LogLevel, _location: &log::LogLocation| {
-                format!("[{}] [{}] {}", time::now().rfc3339(), level, msg)
-            },
-        ),
-        output: vec![
-            fern::OutputConfig::stdout(),
-            fern::OutputConfig::file(&log_path),
-        ],
-        level: log::LogLevelFilter::Trace,
-    };
-    if let Err(e) = fern::init_global_logger(logger_config, log::LogLevelFilter::Trace) {
-        panic!("Failed to initialize global logger: {}", e);
-    }
+    lanta::intiailize_logger();
 
     let modkey = ModKey::Mod4;
     let shift = ModKey::Shift;
