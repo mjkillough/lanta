@@ -51,6 +51,23 @@ pub enum WindowType {
 }
 
 
+#[derive(Copy, Clone, Debug, PartialEq)]
+pub enum WindowState {
+    Modal,
+    Sticky,
+    MaximizedVert,
+    MaximizedHorz,
+    Shaded,
+    SkipTaskbar,
+    SkipPager,
+    Hidden,
+    Fullscreen,
+    Above,
+    Below,
+    DemandsAttention,
+}
+
+
 macro_rules! atoms {
     ( $( $name:ident ),+ ) => {
         #[allow(non_snake_case)]
@@ -87,6 +104,7 @@ pub struct Connection {
     screen_idx: i32,
     atoms: InternedAtoms,
     window_type_lookup: HashMap<xcb::Atom, WindowType>,
+    window_state_lookup: HashMap<xcb::Atom, WindowState>,
 }
 
 
@@ -104,31 +122,46 @@ impl Connection {
 
         let atoms = InternedAtoms::new(&conn).or(Err("Failed to intern atoms"))?;
 
-        let mut lookup = HashMap::new();
-        lookup.insert(conn.WM_WINDOW_TYPE_DESKTOP(), WindowType::Desktop);
-        lookup.insert(conn.WM_WINDOW_TYPE_DOCK(), WindowType::Dock);
-        lookup.insert(conn.WM_WINDOW_TYPE_TOOLBAR(), WindowType::Toolbar);
-        lookup.insert(conn.WM_WINDOW_TYPE_MENU(), WindowType::Menu);
-        lookup.insert(conn.WM_WINDOW_TYPE_UTILITY(), WindowType::Utility);
-        lookup.insert(conn.WM_WINDOW_TYPE_SPLASH(), WindowType::Splash);
-        lookup.insert(conn.WM_WINDOW_TYPE_DIALOG(), WindowType::Dialog);
-        lookup.insert(
+        let mut types = HashMap::new();
+        types.insert(conn.WM_WINDOW_TYPE_DESKTOP(), WindowType::Desktop);
+        types.insert(conn.WM_WINDOW_TYPE_DOCK(), WindowType::Dock);
+        types.insert(conn.WM_WINDOW_TYPE_TOOLBAR(), WindowType::Toolbar);
+        types.insert(conn.WM_WINDOW_TYPE_MENU(), WindowType::Menu);
+        types.insert(conn.WM_WINDOW_TYPE_UTILITY(), WindowType::Utility);
+        types.insert(conn.WM_WINDOW_TYPE_SPLASH(), WindowType::Splash);
+        types.insert(conn.WM_WINDOW_TYPE_DIALOG(), WindowType::Dialog);
+        types.insert(
             conn.WM_WINDOW_TYPE_DROPDOWN_MENU(),
             WindowType::DropdownMenu,
         );
-        lookup.insert(conn.WM_WINDOW_TYPE_POPUP_MENU(), WindowType::PopupMenu);
-        lookup.insert(conn.WM_WINDOW_TYPE_TOOLTIP(), WindowType::Tooltip);
-        lookup.insert(conn.WM_WINDOW_TYPE_NOTIFICATION(), WindowType::Notification);
-        lookup.insert(conn.WM_WINDOW_TYPE_COMBO(), WindowType::Combo);
-        lookup.insert(conn.WM_WINDOW_TYPE_DND(), WindowType::Dnd);
-        lookup.insert(conn.WM_WINDOW_TYPE_NORMAL(), WindowType::Normal);
+        types.insert(conn.WM_WINDOW_TYPE_POPUP_MENU(), WindowType::PopupMenu);
+        types.insert(conn.WM_WINDOW_TYPE_TOOLTIP(), WindowType::Tooltip);
+        types.insert(conn.WM_WINDOW_TYPE_NOTIFICATION(), WindowType::Notification);
+        types.insert(conn.WM_WINDOW_TYPE_COMBO(), WindowType::Combo);
+        types.insert(conn.WM_WINDOW_TYPE_DND(), WindowType::Dnd);
+        types.insert(conn.WM_WINDOW_TYPE_NORMAL(), WindowType::Normal);
+
+        let mut state = HashMap::new();
+        state.insert(conn.WM_STATE_MODAL(), WindowState::Modal);
+        state.insert(conn.WM_STATE_STICKY(), WindowState::Sticky);
+        state.insert(conn.WM_STATE_MAXIMIZED_VERT(), WindowState::MaximizedVert);
+        state.insert(conn.WM_STATE_MAXIMIZED_HORZ(), WindowState::MaximizedHorz);
+        state.insert(conn.WM_STATE_SHADED(), WindowState::Shaded);
+        state.insert(conn.WM_STATE_SKIP_TASKBAR(), WindowState::SkipTaskbar);
+        state.insert(conn.WM_STATE_SKIP_PAGER(), WindowState::SkipPager);
+        state.insert(conn.WM_STATE_HIDDEN(), WindowState::Hidden);
+        state.insert(conn.WM_STATE_FULLSCREEN(), WindowState::Fullscreen);
+        state.insert(conn.WM_STATE_ABOVE(), WindowState::Above);
+        state.insert(conn.WM_STATE_BELOW(), WindowState::Below);
+        state.insert(conn.WM_STATE_DEMANDS_ATTENTION(), WindowState::DemandsAttention);
 
         Ok(Connection {
             conn,
             root: WindowId(root),
             screen_idx,
             atoms,
-            window_type_lookup: lookup,
+            window_type_lookup: types,
+            window_state_lookup: state,
         })
     }
 
@@ -217,6 +250,20 @@ impl Connection {
                     .atoms()
                     .iter()
                     .filter_map(|a| self.window_type_lookup.get(a).cloned())
+                    .collect()
+            })
+            .unwrap_or(Vec::new())
+    }
+
+    pub fn get_window_states(&self, window_id: &WindowId) -> Vec<WindowState> {
+        // EWMH states to ignore any we don't understand.
+        // Don't error if no window states set.
+        ewmh::get_wm_state(&self.conn, window_id.to_x())
+            .get_reply()
+            .map(|reply| {
+                reply.atoms()
+                    .iter()
+                    .filter_map(|a| self.window_state_lookup.get(a).cloned())
                     .collect()
             })
             .unwrap_or(Vec::new())
