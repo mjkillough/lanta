@@ -80,10 +80,7 @@ fn main() {
         ),
     ];
 
-    let layouts = vec![
-        StackLayout::new("stack".to_owned()),
-        TiledLayout::new("tiled".to_owned()),
-    ];
+    let layouts = vec![StackLayout::new("stack"), TiledLayout::new("tiled")];
 
     let group_metadata = vec![
         (keysym::XK_a, "chrome", "stack"),

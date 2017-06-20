@@ -43,8 +43,8 @@ pub struct TiledLayout {
 }
 
 impl TiledLayout {
-    pub fn new(name: String) -> Box<Layout> {
-        Box::new(TiledLayout { name })
+    pub fn new<S: Into<String>>(name: S) -> Box<Layout> {
+        Box::new(TiledLayout { name: name.into() })
     }
 }
 
@@ -81,8 +81,8 @@ pub struct StackLayout {
 }
 
 impl StackLayout {
-    pub fn new(name: String) -> Box<Layout> {
-        Box::new(StackLayout { name })
+    pub fn new<S: Into<String>>(name: S) -> Box<Layout> {
+        Box::new(StackLayout { name: name.into() })
     }
 }
 
