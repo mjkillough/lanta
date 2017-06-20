@@ -116,7 +116,9 @@ impl Group {
         let removed = self.stack.remove_focused();
         self.perform_layout();
         removed.map(|window| {
+            self.connection.disable_window_tracking(&window);
             self.connection.unmap_window(&window);
+            self.connection.enable_window_tracking(&window);
             window
         })
     }
