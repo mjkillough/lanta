@@ -118,12 +118,12 @@ struct Dock {
 
 
 #[derive(Default)]
-struct Docks {
+struct Screen {
     vec: Vec<Dock>,
 }
 
-impl Docks {
-    pub fn add(&mut self, conn: &Connection, window_id: WindowId) {
+impl Screen {
+    pub fn add_dock(&mut self, conn: &Connection, window_id: WindowId) {
         let strut_partial = conn.get_strut_partial(&window_id);
         self.vec.push(Dock {
             window_id,
@@ -131,7 +131,7 @@ impl Docks {
         });
     }
 
-    pub fn remove(&mut self, window_id: &WindowId) {
+    pub fn remove_dock(&mut self, window_id: &WindowId) {
         self.vec.retain(|d| &d.window_id != window_id);
     }
 
@@ -167,7 +167,7 @@ pub struct Lanta {
     connection: Rc<Connection>,
     keys: KeyHandlers,
     groups: Stack<Group>,
-    docks: Docks,
+    screen: Screen,
 }
 
 impl Lanta {
@@ -192,7 +192,7 @@ impl Lanta {
             connection: connection.clone(),
             keys: keys,
             groups: groups,
-            docks: Docks::default(),
+            screen: Screen::default(),
         };
 
         // Learn about existing top-level windows.
@@ -210,7 +210,7 @@ impl Lanta {
     fn viewport(&self) -> Viewport {
         let (width, height) = self.connection
             .get_window_geometry(self.connection.root_window_id());
-        self.docks.viewport(width, height)
+        self.screen.viewport(width, height)
     }
 
     pub fn group(&self) -> &Group {
@@ -295,7 +295,7 @@ impl Lanta {
             .enable_window_key_events(&window_id, &self.keys);
 
         if dock {
-            self.docks.add(&self.connection, window_id);
+            self.screen.add_dock(&self.connection, window_id);
             let viewport = self.viewport();
             self.group_mut().update_viewport(viewport);
         } else {
@@ -313,7 +313,7 @@ impl Lanta {
             .iter_mut()
             .find(|group| group.contains(&window_id))
             .map(|group| group.remove_window(&window_id));
-        self.docks.remove(&window_id);
+        self.screen.remove_dock(&window_id);
 
         // The viewport may have changed.
         let viewport = self.viewport();
