@@ -63,7 +63,7 @@ macro_rules! atoms {
             pub fn new(conn: &xcb::Connection) -> Result<InternedAtoms, xcb::GenericError> {
                 Ok(InternedAtoms {
                     $(
-                        $name: Connection::intern_atom(conn, stringify!($atom))?
+                        $name: Connection::intern_atom(conn, stringify!($name))?
                     ),*
                 })
             }
@@ -77,9 +77,6 @@ macro_rules! atoms {
 atoms!(
     WM_DELETE_WINDOW,
     WM_PROTOCOLS,
-    _NET_NUMBER_OF_DESKTOPS,
-    _NET_CURRENT_DESKTOP,
-    _NET_DESKTOP_NAMES,
 );
 
 
@@ -244,6 +241,7 @@ impl Connection {
         let has_wm_delete_window = protocols.contains(&self.atoms.WM_DELETE_WINDOW);
 
         if has_wm_delete_window {
+            info!("Closing window {} using WM_DELETE", window_id);
             let data = xcb::ClientMessageData::from_data32(
                 [self.atoms.WM_DELETE_WINDOW, xcb::CURRENT_TIME, 0, 0, 0],
             );
@@ -257,6 +255,7 @@ impl Connection {
                 &event,
             );
         } else {
+            info!("Closing window {} using xcb::destroy_window()", window_id);
             xcb::destroy_window(&self.conn, window_id.to_x());
         }
     }
