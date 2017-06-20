@@ -40,11 +40,15 @@ impl fmt::Debug for Layout {
 #[derive(Clone)]
 pub struct TiledLayout {
     name: String,
+    padding: u32,
 }
 
 impl TiledLayout {
-    pub fn new<S: Into<String>>(name: S) -> Box<Layout> {
-        Box::new(TiledLayout { name: name.into() })
+    pub fn new<S: Into<String>>(name: S, padding: u32) -> Box<Layout> {
+        Box::new(TiledLayout {
+            name: name.into(),
+            padding,
+        })
     }
 }
 
@@ -58,15 +62,15 @@ impl Layout for TiledLayout {
             return;
         }
 
-        let tile_height = viewport.height / stack.len() as u32;
+        let tile_height = ((viewport.height - self.padding) / stack.len() as u32) - self.padding;
 
         for (i, window) in stack.enumerate() {
             window.without_tracking(|window| {
                 window.map();
                 window.configure(
-                    viewport.x,
-                    viewport.y + (i as u32 * tile_height),
-                    viewport.width,
+                    viewport.x + self.padding,
+                    viewport.y + self.padding + (i as u32 * (tile_height + self.padding)),
+                    viewport.width - (self.padding * 2),
                     tile_height,
                 );
             });
@@ -78,11 +82,15 @@ impl Layout for TiledLayout {
 #[derive(Clone)]
 pub struct StackLayout {
     name: String,
+    padding: u32,
 }
 
 impl StackLayout {
-    pub fn new<S: Into<String>>(name: S) -> Box<Layout> {
-        Box::new(StackLayout { name: name.into() })
+    pub fn new<S: Into<String>>(name: S, padding: u32) -> Box<Layout> {
+        Box::new(StackLayout {
+            name: name.into(),
+            padding,
+        })
     }
 }
 
@@ -109,7 +117,12 @@ impl Layout for StackLayout {
         focused.map(|window| {
             window.without_tracking(|window| {
                 window.map();
-                window.configure(viewport.x, viewport.y, viewport.width, viewport.height);
+                window.configure(
+                    viewport.x + self.padding,
+                    viewport.y + self.padding,
+                    viewport.width - (self.padding * 2),
+                    viewport.height - (self.padding * 2),
+                );
             })
         });
     }

@@ -80,7 +80,12 @@ fn main() {
         ),
     ];
 
-    let layouts = vec![StackLayout::new("stack"), TiledLayout::new("tiled")];
+    let padding = 10;
+    let layouts = vec![
+        StackLayout::new("stack-padded", padding),
+        StackLayout::new("stack", 0),
+        TiledLayout::new("tiled", padding),
+    ];
 
     let group_metadata = vec![
         (keysym::XK_a, "chrome", "stack"),
