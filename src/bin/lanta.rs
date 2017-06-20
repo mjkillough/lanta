@@ -7,8 +7,7 @@ extern crate lanta;
 
 use std::process::Command;
 
-use lanta::cmd;
-use lanta::RustWindowManager;
+use lanta::{cmd, Lanta};
 use lanta::groups::GroupBuilder;
 use lanta::keys::ModKey;
 use lanta::layout::{StackLayout, TiledLayout};
@@ -54,7 +53,5 @@ fn main() {
         ]
     };
 
-    let mut wm = RustWindowManager::new(keys, groups, layouts).unwrap();
-    info!("Started WM, entering event loop.");
-    wm.run_event_loop();
+    Lanta::new(keys, groups, layouts).unwrap().run();
 }

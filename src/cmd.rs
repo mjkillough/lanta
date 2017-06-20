@@ -1,9 +1,9 @@
 use std::rc::Rc;
 
-use super::RustWindowManager;
+use Lanta;
 
 
-pub type Command = Rc<Fn(&mut RustWindowManager)>;
+pub type Command = Rc<Fn(&mut Lanta)>;
 
 
 /// Lazy-functions which return a `Command` to do the requested action.

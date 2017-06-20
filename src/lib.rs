@@ -145,14 +145,14 @@ impl Docks {
 }
 
 
-pub struct RustWindowManager {
+pub struct Lanta {
     connection: Rc<Connection>,
     keys: KeyHandlers,
     groups: Stack<Group>,
     docks: Docks,
 }
 
-impl RustWindowManager {
+impl Lanta {
     pub fn new<K>(
         keys: K,
         groups: Vec<GroupBuilder>,
@@ -174,7 +174,7 @@ impl RustWindowManager {
                 .collect::<Vec<Group>>(),
         );
 
-        let mut wm = RustWindowManager {
+        let mut wm = Lanta {
             connection: connection.clone(),
             keys: keys,
             groups: groups,
@@ -304,7 +304,8 @@ impl RustWindowManager {
         self.group_mut().update_viewport(viewport);
     }
 
-    pub fn run_event_loop(&mut self) {
+    pub fn run(mut self) {
+        info!("Started WM, entering event loop.");
         let event_loop_connection = self.connection.clone();
         let event_loop = event_loop_connection.get_event_loop();
         for event in event_loop {
