@@ -153,7 +153,10 @@ impl Connection {
         state.insert(conn.WM_STATE_FULLSCREEN(), WindowState::Fullscreen);
         state.insert(conn.WM_STATE_ABOVE(), WindowState::Above);
         state.insert(conn.WM_STATE_BELOW(), WindowState::Below);
-        state.insert(conn.WM_STATE_DEMANDS_ATTENTION(), WindowState::DemandsAttention);
+        state.insert(
+            conn.WM_STATE_DEMANDS_ATTENTION(),
+            WindowState::DemandsAttention,
+        );
 
         Ok(Connection {
             conn,
@@ -261,7 +264,8 @@ impl Connection {
         ewmh::get_wm_state(&self.conn, window_id.to_x())
             .get_reply()
             .map(|reply| {
-                reply.atoms()
+                reply
+                    .atoms()
                     .iter()
                     .filter_map(|a| self.window_state_lookup.get(a).cloned())
                     .collect()
