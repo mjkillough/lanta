@@ -72,9 +72,9 @@ pub fn intiailize_logger() -> Result<()> {
 
 #[macro_export]
 macro_rules! keys {
-    [ $( ([$( $mod:ident ),+], $key:ident, $cmd:expr) ),+ $(,)*] => (
+    [ $( ([$( $mod:ident ),*], $key:ident, $cmd:expr) ),+ $(,)*] => (
         vec![
-            $( (vec![$( $mod ),+], ::lanta::keysym::$key, $cmd) ),+
+            $( (vec![$( $mod ),*], ::lanta::keysym::$key, $cmd) ),+
         ]
     )
 }
