@@ -35,6 +35,7 @@ fn run() -> Result<()> {
         ([modkey], XK_Return, spawn!("urxvt")),
         ([modkey], XK_c, spawn!("chrome")),
         ([modkey], XK_v, spawn!("code")),
+        ([modkey], XK_b, spawn!("spotify --force-device-scale-factor=2")),
         ([modkey], XK_q, spawn!("change-wallpaper")),
         ([], XF86XK_MonBrightnessUp, spawn!("xbacklight", "-inc", "10")),
         ([], XF86XK_MonBrightnessDown, spawn!("xbacklight", "-dec", "10")),
