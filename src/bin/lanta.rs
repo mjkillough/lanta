@@ -23,7 +23,7 @@ macro_rules! spawn {
 fn run() -> Result<()> {
     lanta::intiailize_logger()?;
 
-    let modkey = ModKey::Control;
+    let modkey = ModKey::Mod4;
     let shift = ModKey::Shift;
     let mut keys = keys![
         ([modkey], XK_w, cmd::lazy::close_focused_window()),

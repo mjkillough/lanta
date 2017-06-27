@@ -14,10 +14,10 @@ libc = "0.2.21"
 log = "0.3.7"
 time = "0.1.37"
 x11 = "2.12.1"
-xcb = { version = "0.7.6", features = ["thread"] }
+xcb = "0.7.6"
 xcb-util = { version = "0.1.8", features = ["ewmh", "icccm", "keysyms"] }
 xdg = "2.1.0"
 
 [replace]
-# Custom patch, not yet upstreamed:
-"xcb:0.7.6" = { git = "https://github.com/mjkillough/rust-xcb.git", branch = "error_trait" }
+# Need unreleased rtbo/rust-xcb#32:
+"xcb:0.7.6" = { git = "https://github.com/rtbo/rust-xcb.git" }
