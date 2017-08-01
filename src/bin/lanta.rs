@@ -33,7 +33,7 @@ fn run() -> Result<()> {
         ([modkey, shift], XK_k, cmd::lazy::shuffle_previous()),
         ([modkey], XK_Tab, cmd::lazy::layout_next()),
         ([modkey], XK_Return, spawn!("urxvt")),
-        ([modkey], XK_c, spawn!("chrome")),
+        ([modkey], XK_c, spawn!("firefox")),
         ([modkey], XK_v, spawn!("code")),
         ([modkey], XK_b, spawn!("spotify --force-device-scale-factor=2")),
         ([modkey], XK_q, spawn!("change-wallpaper")),
