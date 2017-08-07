@@ -84,14 +84,20 @@ macro_rules! keys {
 macro_rules! groups {
     {
         $keys:ident,
+        $movemodkey:ident,
         [
             $(( [$( $modkey:ident ),+], $key:ident, $name:expr, $layout:expr )),+
             $(,)*
         ]
     }  => {{
         $keys.extend(keys![
+            // Switch to group:
             $(
                 ([$($modkey),+], $key, ::lanta::cmd::lazy::switch_group($name))
+            ),+,
+            // Move window to group:
+            $(
+                ([$($modkey),+, $movemodkey], $key, ::lanta::cmd::lazy::move_window_to_group($name))
             ),+
         ]);
         vec![

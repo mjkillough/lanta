@@ -56,6 +56,7 @@ fn run() -> Result<()> {
 
     let groups = groups!{
         keys,
+        shift,
         [
             ([modkey], XK_a, "chrome", "stack"),
             ([modkey], XK_s, "code", "stack"),
