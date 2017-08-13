@@ -5,6 +5,7 @@ extern crate error_chain;
 extern crate fern;
 #[macro_use]
 extern crate log;
+extern crate log_panics;
 extern crate libc;
 extern crate time;
 extern crate x11;
@@ -46,6 +47,8 @@ pub mod keysym {
 /// Outputs to stdout and $XDG_DATA/lanta/lanta.log by default.
 /// You should feel free to initialize your own logger, instead of using this.
 pub fn intiailize_logger() -> Result<()> {
+    log_panics::init();
+
     let xdg_dirs = xdg::BaseDirectories::with_prefix("lanta")?;
     let log_path = xdg_dirs
         .place_data_file("lanta.log")
