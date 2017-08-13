@@ -283,16 +283,19 @@ impl Lanta {
         }
     }
 
+    /// Returns whether the window is a member of any group.
+    fn is_window_managed(&self, window_id: &WindowId) -> bool {
+        self.groups.iter().any(|g| g.contains(window_id))
+    }
+
     pub fn manage_window(&mut self, window_id: WindowId) {
         debug!("Managing window: {}", window_id);
 
-        // If we are already managing the window, then do nothing.
-        // This may result in some undesireableness, in that we don't move
-        // it to the currently focused group when it's remapped, but it shouldn't
-        // be too bad.
-        let already_managed = self.groups.iter().any(|g| g.contains(&window_id));
-        if already_managed {
-            warn!(
+        // If we are already managing the window, then do nothing. We do not
+        // want the window to end up in two groups at once. We shouldn't
+        // be called in such cases, so treat it as an error.
+        if self.is_window_managed(&window_id) {
+            error!(
                 "Asked to manage window that's already managed: {}",
                 window_id
             );
@@ -348,8 +351,18 @@ impl Lanta {
     }
 
     fn on_map_request(&mut self, window_id: WindowId) {
-        self.connection.map_window(&window_id);
-        self.manage_window(window_id);
+        if !self.is_window_managed(&window_id) {
+            // If the window isn't in any group, then add it to the current group.
+            // (This will have the side-effect of mapping the window, as new windows are focused
+            // and focused windows are mapped).
+            self.manage_window(window_id);
+        } else if self.group().contains(&window_id) {
+            // Otherwise, if the window is in the active group, focus it. The application probably
+            // wants us to make it prominent. Log as there may be misbehaving applications that
+            // constantly re-map windows and cause focus issues.
+            info!("Window {} asked to be mapped but is already mapped: focusing.", window_id);
+            self.group_mut().focus(&window_id);
+        }
     }
 
     fn on_unmap_notify(&mut self, window_id: WindowId) {
