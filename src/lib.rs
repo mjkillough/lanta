@@ -309,6 +309,7 @@ impl Lanta {
             .enable_window_key_events(&window_id, &self.keys);
 
         if dock {
+            self.connection.map_window(&window_id);
             self.screen.add_dock(&self.connection, window_id);
             let viewport = self.viewport();
             self.group_mut().update_viewport(viewport);
