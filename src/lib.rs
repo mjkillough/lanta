@@ -54,22 +54,21 @@ pub fn intiailize_logger() -> Result<()> {
         .place_data_file("lanta.log")
         .chain_err(|| "Could not create log file")?;
 
-    let logger_config = fern::DispatchConfig {
-        format: Box::new(
-            |msg: &str, level: &log::LogLevel, _location: &log::LogLocation| {
-                format!("[{}] [{}] {}", time::now().rfc3339(), level, msg)
-            },
-        ),
-        output: vec![
-            fern::OutputConfig::stdout(),
-            fern::OutputConfig::file(&log_path),
-        ],
-        level: log::LogLevelFilter::Trace,
-    };
-    Ok(fern::init_global_logger(
-        logger_config,
-        log::LogLevelFilter::Trace,
-    )?)
+    fern::Dispatch::new()
+        .format(|out, message, record| {
+            out.finish(format_args!(
+                "[{}] [{}] {}",
+                time::now().rfc3339(),
+                record.level(),
+                message
+            ))
+        })
+        .level(log::LevelFilter::Trace)
+        .chain(std::io::stdout())
+        .chain(fern::log_file(&log_path)?)
+        .apply()?;
+
+    Ok(())
 }
 
 
