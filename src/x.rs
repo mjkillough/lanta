@@ -434,18 +434,20 @@ impl<'a> Iterator for EventLoop<'a> {
                 .wait_for_event()
                 .expect("wait_for_event() returned None: IO error?");
 
-            let propagate = match event.response_type() {
-                xcb::CONFIGURE_REQUEST => self.on_configure_request(xcb::cast_event(&event)),
-                xcb::MAP_REQUEST => self.on_map_request(xcb::cast_event(&event)),
-                xcb::UNMAP_NOTIFY => self.on_unmap_notify(xcb::cast_event(&event)),
-                xcb::DESTROY_NOTIFY => self.on_destroy_notify(xcb::cast_event(&event)),
-                xcb::KEY_PRESS => self.on_key_press(xcb::cast_event(&event)),
-                xcb::ENTER_NOTIFY => self.on_enter_notify(xcb::cast_event(&event)),
-                _ => None,
-            };
+            unsafe {
+                let propagate = match event.response_type() {
+                    xcb::CONFIGURE_REQUEST => self.on_configure_request(xcb::cast_event(&event)),
+                    xcb::MAP_REQUEST => self.on_map_request(xcb::cast_event(&event)),
+                    xcb::UNMAP_NOTIFY => self.on_unmap_notify(xcb::cast_event(&event)),
+                    xcb::DESTROY_NOTIFY => self.on_destroy_notify(xcb::cast_event(&event)),
+                    xcb::KEY_PRESS => self.on_key_press(xcb::cast_event(&event)),
+                    xcb::ENTER_NOTIFY => self.on_enter_notify(xcb::cast_event(&event)),
+                    _ => None,
+                };
 
-            if let Some(propagate_event) = propagate {
-                return Some(propagate_event);
+                if let Some(propagate_event) = propagate {
+                    return Some(propagate_event);
+                }
             }
         }
     }
