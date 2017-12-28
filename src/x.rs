@@ -5,7 +5,6 @@ use xcb;
 use xcb_util::{ewmh, icccm};
 use xcb_util::keysyms::KeySymbols;
 
-use debug;
 use errors::*;
 use keys::{KeyCombo, KeyHandlers, ModKey};
 use groups::Group;

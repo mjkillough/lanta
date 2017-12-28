@@ -18,7 +18,6 @@ use std::cmp;
 use std::rc::Rc;
 
 pub mod cmd;
-mod debug;
 pub mod errors;
 mod groups;
 mod keys;
