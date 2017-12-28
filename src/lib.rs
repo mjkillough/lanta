@@ -1,4 +1,5 @@
 // #![deny(warnings)]
+#![feature(universal_impl_trait)]
 
 #[macro_use]
 extern crate error_chain;
@@ -23,7 +24,6 @@ mod groups;
 mod keys;
 pub mod layout;
 mod stack;
-mod window;
 mod x;
 
 use errors::*;

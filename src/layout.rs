@@ -1,7 +1,8 @@
 use std::fmt;
 
-use groups::{GroupIter, GroupWindow};
-use window::Window;
+use stack::Stack;
+use x::{Connection, WindowId};
+
 use super::Viewport;
 
 
@@ -21,7 +22,7 @@ where
 
 pub trait Layout: LayoutClone {
     fn name(&self) -> &str;
-    fn layout(&self, viewport: &Viewport, focused: Option<GroupWindow>, stack: GroupIter);
+    fn layout(&self, connection: &Connection, viewport: &Viewport, stack: &Stack<WindowId>);
 }
 
 impl Clone for Box<Layout> {
@@ -57,23 +58,23 @@ impl Layout for TiledLayout {
         &self.name
     }
 
-    fn layout(&self, viewport: &Viewport, _: Option<GroupWindow>, stack: GroupIter) {
+    fn layout(&self, connection: &Connection, viewport: &Viewport, stack: &Stack<WindowId>) {
         if stack.len() == 0 {
             return;
         }
 
         let tile_height = ((viewport.height - self.padding) / stack.len() as u32) - self.padding;
 
-        for (i, window) in stack.enumerate() {
-            window.without_tracking(|window| {
-                window.map();
-                window.configure(
+        for (i, window_id) in stack.iter().enumerate() {
+            connection.disable_window_tracking(window_id);
+            connection.map_window(window_id);
+            connection.configure_window(window_id,
                     viewport.x + self.padding,
                     viewport.y + self.padding + (i as u32 * (tile_height + self.padding)),
                     viewport.width - (self.padding * 2),
                     tile_height,
                 );
-            });
+            connection.enable_window_tracking(window_id);
         }
     }
 }
@@ -99,31 +100,31 @@ impl Layout for StackLayout {
         &self.name
     }
 
-    fn layout(&self, viewport: &Viewport, focused: Option<GroupWindow>, stack: GroupIter) {
+    fn layout(&self, connection: &Connection, viewport: &Viewport, stack: &Stack<WindowId>) {
         if stack.len() == 0 {
             return;
         }
 
-        {
-            let unfocused = stack.filter(|window| {
-                focused
-                    .as_ref()
-                    .map_or(true, |focused_window| window.id() != focused_window.id())
-            });
-            for window in unfocused {
-                window.without_tracking(|window| window.unmap());
+        // A non-empty `Stack` is guaranteed to have something focused.
+        let focused_id = stack.focused().unwrap();
+
+        for window_id in stack.iter() {
+            if focused_id == window_id {
+                continue;
             }
+            connection.disable_window_tracking(window_id);
+            connection.unmap_window(window_id);
+            connection.enable_window_tracking(window_id);
         }
-        focused.map(|window| {
-            window.without_tracking(|window| {
-                window.map();
-                window.configure(
-                    viewport.x + self.padding,
-                    viewport.y + self.padding,
-                    viewport.width - (self.padding * 2),
-                    viewport.height - (self.padding * 2),
-                );
-            })
-        });
+
+        connection.disable_window_tracking(focused_id);
+        connection.map_window(focused_id);
+        connection.configure_window(focused_id,
+            viewport.x + self.padding,
+            viewport.y + self.padding,
+            viewport.width - (self.padding * 2),
+            viewport.height - (self.padding * 2),
+        );
+        connection.enable_window_tracking(focused_id);
     }
 }

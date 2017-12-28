@@ -1,9 +1,7 @@
 use std::rc::Rc;
-use std::slice::Iter;
 
 use layout::Layout;
 use stack::Stack;
-use window::Window;
 use x::{Connection, WindowId};
 use super::Viewport;
 
@@ -70,8 +68,10 @@ impl Group {
 
     pub fn deactivate(&mut self) {
         info!("Deactivating group: {}", self.name());
-        for window in self.iter() {
-            window.without_tracking(|w| w.unmap());
+        for window_id in self.stack.iter() {
+            self.connection.disable_window_tracking(window_id);
+            self.connection.unmap_window(window_id);
+            self.connection.enable_window_tracking(window_id);
         }
         self.active = false;
     }
@@ -81,16 +81,9 @@ impl Group {
             return;
         }
 
-        // Allow the layout to map and position windows it cares about.
-        let focused = self.stack.focused().map(|window_id| {
-            GroupWindow {
-                connection: &self.connection,
-                window_id: &window_id,
-            }
-        });
         self.layouts
             .focused()
-            .map(|l| l.layout(&self.viewport, focused, self.iter()));
+            .map(|l| l.layout(&self.connection, &self.viewport, &self.stack));
 
         // Tell X to focus the focused window for this group, or to unset
         // it's focus if we have no windows.
@@ -139,20 +132,10 @@ impl Group {
         self.perform_layout();
     }
 
-    fn iter<'a>(&'a self) -> GroupIter<'a> {
-        GroupIter {
-            connection: &self.connection,
-            inner: self.stack.iter(),
+    pub fn close_focused(&self) {
+        if let Some(window_id) = self.stack.focused() {
+            self.connection.close_window(window_id);
         }
-    }
-
-    pub fn get_focused<'a>(&'a self) -> Option<GroupWindow<'a>> {
-        self.stack.focused().map(move |ref id| {
-            GroupWindow {
-                connection: &self.connection,
-                window_id: &id,
-            }
-        })
     }
 
     pub fn focus_next(&mut self) {
@@ -214,46 +197,5 @@ impl Group {
         );
         self.layouts.focus_previous();
         self.perform_layout();
-    }
-}
-
-
-pub struct GroupIter<'a> {
-    connection: &'a Connection,
-    inner: Iter<'a, WindowId>,
-}
-
-impl<'a> Iterator for GroupIter<'a> {
-    type Item = GroupWindow<'a>;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        self.inner.next().map(|window_id| {
-            GroupWindow {
-                connection: self.connection,
-                window_id: window_id,
-            }
-        })
-    }
-}
-
-impl<'a> ExactSizeIterator for GroupIter<'a> {
-    fn len(&self) -> usize {
-        self.inner.len()
-    }
-}
-
-
-pub struct GroupWindow<'a> {
-    connection: &'a Connection,
-    window_id: &'a WindowId,
-}
-
-impl<'a> Window for GroupWindow<'a> {
-    fn connection(&self) -> &Connection {
-        self.connection
-    }
-
-    fn id(&self) -> &WindowId {
-        self.window_id
     }
 }

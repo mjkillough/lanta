@@ -16,12 +16,11 @@ pub mod lazy {
     use std::sync::Mutex;
 
     use super::Command;
-    use window::Window;
 
     /// Closes the currently focused window.
     pub fn close_focused_window() -> Command {
         Rc::new(|ref mut wm| {
-            wm.group_mut().get_focused().map(|w| w.close());
+            wm.group_mut().close_focused();
         })
     }
 
