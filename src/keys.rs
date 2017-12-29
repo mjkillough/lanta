@@ -24,9 +24,8 @@ type ModMask = c_uint;
 
 impl ModKey {
     pub fn mask_all() -> ModMask {
-        xcb::MOD_MASK_SHIFT | xcb::MOD_MASK_LOCK | xcb::MOD_MASK_CONTROL |
-            xcb::MOD_MASK_1 | xcb::MOD_MASK_2 | xcb::MOD_MASK_3 | xcb::MOD_MASK_4 |
-            xcb::MOD_MASK_5
+        xcb::MOD_MASK_SHIFT | xcb::MOD_MASK_LOCK | xcb::MOD_MASK_CONTROL | xcb::MOD_MASK_1
+            | xcb::MOD_MASK_2 | xcb::MOD_MASK_3 | xcb::MOD_MASK_4 | xcb::MOD_MASK_5
     }
 
     fn mask(&self) -> ModMask {

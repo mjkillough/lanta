@@ -5,10 +5,10 @@
 #[macro_use]
 extern crate error_chain;
 extern crate fern;
+extern crate libc;
 #[macro_use]
 extern crate log;
 extern crate log_panics;
-extern crate libc;
 extern crate time;
 extern crate x11;
 extern crate xcb;
@@ -192,9 +192,7 @@ impl Lanta {
         let groups = Stack::from(
             groups
                 .into_iter()
-                .map(|group: GroupBuilder| {
-                    group.build(connection.clone(), layouts.clone())
-                })
+                .map(|group: GroupBuilder| group.build(connection.clone(), layouts.clone()))
                 .collect::<Vec<Group>>(),
         );
 
@@ -360,7 +358,10 @@ impl Lanta {
             // Otherwise, if the window is in the active group, focus it. The application probably
             // wants us to make it prominent. Log as there may be misbehaving applications that
             // constantly re-map windows and cause focus issues.
-            info!("Window {} asked to be mapped but is already mapped: focusing.", window_id);
+            info!(
+                "Window {} asked to be mapped but is already mapped: focusing.",
+                window_id
+            );
             self.group_mut().focus(&window_id);
         }
     }

@@ -68,12 +68,13 @@ impl Layout for TiledLayout {
         for (i, window_id) in stack.iter().enumerate() {
             connection.disable_window_tracking(window_id);
             connection.map_window(window_id);
-            connection.configure_window(window_id,
-                    viewport.x + self.padding,
-                    viewport.y + self.padding + (i as u32 * (tile_height + self.padding)),
-                    viewport.width - (self.padding * 2),
-                    tile_height,
-                );
+            connection.configure_window(
+                window_id,
+                viewport.x + self.padding,
+                viewport.y + self.padding + (i as u32 * (tile_height + self.padding)),
+                viewport.width - (self.padding * 2),
+                tile_height,
+            );
             connection.enable_window_tracking(window_id);
         }
     }
@@ -119,7 +120,8 @@ impl Layout for StackLayout {
 
         connection.disable_window_tracking(focused_id);
         connection.map_window(focused_id);
-        connection.configure_window(focused_id,
+        connection.configure_window(
+            focused_id,
             viewport.x + self.padding,
             viewport.y + self.padding,
             viewport.width - (self.padding * 2),

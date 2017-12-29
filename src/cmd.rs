@@ -26,29 +26,39 @@ pub mod lazy {
 
     /// Moves the focus to the next window in the current group's stack.
     pub fn focus_next() -> Command {
-        Rc::new(|ref mut wm| { wm.group_mut().focus_next(); })
+        Rc::new(|ref mut wm| {
+            wm.group_mut().focus_next();
+        })
     }
 
     /// Moves the focus to the previous window in the current group's stack.
     pub fn focus_previous() -> Command {
-        Rc::new(|ref mut wm| { wm.group_mut().focus_previous(); })
+        Rc::new(|ref mut wm| {
+            wm.group_mut().focus_previous();
+        })
     }
 
     /// Shuffles the focused window to the next position in the current group's
     /// stack.
     pub fn shuffle_next() -> Command {
-        Rc::new(|ref mut wm| { wm.group_mut().shuffle_next(); })
+        Rc::new(|ref mut wm| {
+            wm.group_mut().shuffle_next();
+        })
     }
 
     /// Shuffles the focused window to the previous position in the current
     /// group's stack.
     pub fn shuffle_previous() -> Command {
-        Rc::new(|ref mut wm| { wm.group_mut().shuffle_previous(); })
+        Rc::new(|ref mut wm| {
+            wm.group_mut().shuffle_previous();
+        })
     }
 
     /// Cycles to the next layout of the current group.
     pub fn layout_next() -> Command {
-        Rc::new(|ref mut wm| { wm.group_mut().layout_next(); })
+        Rc::new(|ref mut wm| {
+            wm.group_mut().layout_next();
+        })
     }
 
     /// Spawns the specified command.

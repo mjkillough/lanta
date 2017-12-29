@@ -91,10 +91,7 @@ macro_rules! atoms {
 }
 
 
-atoms!(
-    WM_DELETE_WINDOW,
-    WM_PROTOCOLS,
-);
+atoms!(WM_DELETE_WINDOW, WM_PROTOCOLS,);
 
 
 pub struct Connection {
@@ -110,8 +107,8 @@ pub struct Connection {
 impl Connection {
     /// Opens a connection to the X server, returning a new Connection object.
     pub fn connect() -> Result<Connection> {
-        let (conn, screen_idx) = xcb::Connection::connect(None)
-            .chain_err(|| "Failed to connect to X server")?;
+        let (conn, screen_idx) =
+            xcb::Connection::connect(None).chain_err(|| "Failed to connect to X server")?;
         let conn = ewmh::Connection::connect(conn).map_err(|(e, _)| e)?;
         let root = conn.get_setup()
             .roots()
@@ -189,9 +186,8 @@ impl Connection {
         ];
         xcb::change_window_attributes_checked(&self.conn, self.root.to_x(), &values)
             .request_check()
-            .or(Err(
-                "Could not register SUBSTRUCTURE_NOTIFY/REDIRECT".to_owned(),
-            ))?;
+            .or(Err("Could not register SUBSTRUCTURE_NOTIFY/REDIRECT"
+                .to_owned()))?;
 
         self.enable_window_key_events(&self.root, key_handlers);
 
@@ -210,9 +206,9 @@ impl Connection {
 
         // Matching the current group on name isn't perfect, but it's good enough for
         // EWMH.
-        let focused_idx = groups.focused().and_then(|focused| {
-            groups.iter().position(|g| g.name() == focused.name())
-        });
+        let focused_idx = groups
+            .focused()
+            .and_then(|focused| groups.iter().position(|g| g.name() == focused.name()));
         match focused_idx {
             Some(idx) => {
                 ewmh::set_current_desktop(&self.conn, self.screen_idx, idx as u32);
@@ -289,9 +285,13 @@ impl Connection {
 
         if has_wm_delete_window {
             info!("Closing window {} using WM_DELETE", window_id);
-            let data = xcb::ClientMessageData::from_data32(
-                [self.atoms.WM_DELETE_WINDOW, xcb::CURRENT_TIME, 0, 0, 0],
-            );
+            let data = xcb::ClientMessageData::from_data32([
+                self.atoms.WM_DELETE_WINDOW,
+                xcb::CURRENT_TIME,
+                0,
+                0,
+                0,
+            ]);
             let event =
                 xcb::ClientMessageEvent::new(32, window_id.to_x(), self.atoms.WM_PROTOCOLS, data);
             xcb::send_event(
@@ -358,8 +358,7 @@ impl Connection {
                 None => {
                     error!(
                         "Failed to get keycode for keysym {} - could not register handler on {}",
-                        key.keysym,
-                        window_id
+                        key.keysym, window_id
                     );
                 }
             }
@@ -464,12 +463,12 @@ impl<'a> EventLoop<'a> {
             (xcb::CONFIG_WINDOW_HEIGHT as u16, event.height() as u32),
             (
                 xcb::CONFIG_WINDOW_BORDER_WIDTH as u16,
-                event.border_width() as u32
+                event.border_width() as u32,
             ),
             (xcb::CONFIG_WINDOW_SIBLING as u16, event.sibling() as u32),
             (
                 xcb::CONFIG_WINDOW_STACK_MODE as u16,
-                event.stack_mode() as u32
+                event.stack_mode() as u32,
             ),
         ];
         let filtered_values: Vec<_> = values

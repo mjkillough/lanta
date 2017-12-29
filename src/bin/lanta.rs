@@ -35,16 +35,40 @@ fn run() -> Result<()> {
         ([modkey], XK_Return, spawn!("urxvt")),
         ([modkey], XK_c, spawn!("firefox-nightly")),
         ([modkey], XK_v, spawn!("code")),
-        ([modkey], XK_b, spawn!("spotify --force-device-scale-factor=2")),
+        (
+            [modkey],
+            XK_b,
+            spawn!("spotify --force-device-scale-factor=2")
+        ),
         ([modkey], XK_q, spawn!("change-wallpaper")),
-        ([], XF86XK_MonBrightnessUp, spawn!("xbacklight", "-inc", "10")),
-        ([], XF86XK_MonBrightnessDown, spawn!("xbacklight", "-dec", "10")),
+        (
+            [],
+            XF86XK_MonBrightnessUp,
+            spawn!("xbacklight", "-inc", "10")
+        ),
+        (
+            [],
+            XF86XK_MonBrightnessDown,
+            spawn!("xbacklight", "-dec", "10")
+        ),
         ([], XF86XK_AudioPrev, spawn!("playerctl", "previous")),
         ([], XF86XK_AudioPlay, spawn!("playerctl", "play-pause")),
         ([], XF86XK_AudioNext, spawn!("playerctl", "next")),
-        ([], XF86XK_AudioRaiseVolume, spawn!("amixer", "-q", "set", "Master", "5%+")),
-        ([], XF86XK_AudioLowerVolume, spawn!("amixer", "-q", "set", "Master", "5%-")),
-        ([], XF86XK_AudioMute, spawn!("amixer", "-q", "set", "Master", "toggle")),
+        (
+            [],
+            XF86XK_AudioRaiseVolume,
+            spawn!("amixer", "-q", "set", "Master", "5%+")
+        ),
+        (
+            [],
+            XF86XK_AudioLowerVolume,
+            spawn!("amixer", "-q", "set", "Master", "5%-")
+        ),
+        (
+            [],
+            XF86XK_AudioMute,
+            spawn!("amixer", "-q", "set", "Master", "toggle")
+        ),
     ];
 
     let padding = 20;
