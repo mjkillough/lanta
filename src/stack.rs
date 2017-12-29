@@ -185,6 +185,7 @@ impl<T> From<Vec<T>> for Stack<T> {
     }
 }
 
+
 #[cfg(test)]
 mod test {
     use std::cmp::PartialEq;
