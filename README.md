@@ -21,6 +21,8 @@ There are currently a few simple layouts implemented:
 
 ## Installing
 
+Lanta currently requires the nightly version of Rust to compile. It should be relatively easy to port it to work on the stable version of Rust if required.
+
 Your system must first have all of the required [dependencies](#dependencies)
 
 To accept the default key shortcuts, layouts and groups, you can install and run using:

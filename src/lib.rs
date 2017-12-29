@@ -1,5 +1,6 @@
 // #![deny(warnings)]
-#![feature(universal_impl_trait)]
+#![feature(conservative_impl_trait, universal_impl_trait)]
+#![feature(nll)]
 
 #[macro_use]
 extern crate error_chain;
@@ -30,11 +31,11 @@ use errors::*;
 use groups::Group;
 use keys::{KeyCombo, KeyHandlers};
 use layout::Layout;
-use stack::Stack;
 use x::{Connection, Event, StrutPartial, WindowId, WindowType};
 
 pub use groups::GroupBuilder;
 pub use keys::ModKey;
+pub use stack::Stack;
 
 pub mod keysym {
     pub use x11::keysym::*;
