@@ -11,11 +11,11 @@ pub struct TiledLayout {
 }
 
 impl TiledLayout {
-    pub fn new<S: Into<String>>(name: S, padding: u32) -> Box<Layout> {
-        Box::new(TiledLayout {
+    pub fn new<S: Into<String>>(name: S, padding: u32) -> TiledLayout {
+        TiledLayout {
             name: name.into(),
             padding,
-        })
+        }
     }
 }
 

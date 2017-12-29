@@ -72,7 +72,7 @@ fn run() -> Result<()> {
     ];
 
     let padding = 20;
-    let layouts = vec![
+    let layouts = layouts![
         StackLayout::new("stack-padded", padding),
         StackLayout::new("stack", 0),
         TiledLayout::new("tiled", padding),

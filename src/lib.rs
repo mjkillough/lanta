@@ -111,6 +111,18 @@ macro_rules! groups {
 }
 
 
+#[macro_export]
+macro_rules! layouts {
+    [$( $layout:expr ),+ $(,)*] => (
+        vec![
+            $(
+                Box::new($layout) as Box<$crate::layout::Layout>
+            ),+
+        ]
+    )
+}
+
+
 #[derive(Clone, Copy, Debug, Default)]
 pub struct Viewport {
     pub x: u32,

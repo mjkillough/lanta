@@ -11,11 +11,11 @@ pub struct StackLayout {
 }
 
 impl StackLayout {
-    pub fn new<S: Into<String>>(name: S, padding: u32) -> Box<Layout> {
-        Box::new(StackLayout {
+    pub fn new<S: Into<String>>(name: S, padding: u32) -> StackLayout {
+        StackLayout {
             name: name.into(),
             padding,
-        })
+        }
     }
 }
 
