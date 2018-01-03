@@ -76,7 +76,7 @@ pub fn intiailize_logger() -> Result<()> {
 macro_rules! keys {
     [ $( ([$( $mod:ident ),*], $key:ident, $cmd:expr) ),+ $(,)*] => (
         vec![
-            $( (vec![$( $mod ),*], ::lanta::keysym::$key, $cmd) ),+
+            $( (vec![$( $mod ),*],  $crate::keysym::$key, $cmd) ),+
         ]
     )
 }
@@ -95,16 +95,16 @@ macro_rules! groups {
         $keys.extend(keys![
             // Switch to group:
             $(
-                ([$($modkey),+], $key, ::lanta::cmd::lazy::switch_group($name))
+                ([$($modkey),+], $key, $crate::cmd::lazy::switch_group($name))
             ),+,
             // Move window to group:
             $(
-                ([$($modkey),+, $movemodkey], $key, ::lanta::cmd::lazy::move_window_to_group($name))
+                ([$($modkey),+, $movemodkey], $key,  $crate::cmd::lazy::move_window_to_group($name))
             ),+
         ]);
         vec![
             $(
-                ::lanta::GroupBuilder::new($name, $layout)
+                 $crate::GroupBuilder::new($name, $layout)
             ),+
         ]
     }}
