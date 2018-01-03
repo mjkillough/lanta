@@ -19,6 +19,8 @@ use std::cell::RefCell;
 use std::cmp;
 use std::rc::Rc;
 
+use error_chain::ChainedError;
+
 pub mod cmd;
 pub mod errors;
 mod groups;
@@ -390,7 +392,15 @@ impl Lanta {
     }
 
     fn on_key_press(&mut self, key: KeyCombo) {
-        self.keys.get(&key).map(move |handler| (handler)(self));
+        self.keys.get(&key).map(move |handler| {
+            if let Err(error) = (handler)(self) {
+                error!(
+                    "Error running command for key command {:?}: {}",
+                    key,
+                    error.display_chain().to_string()
+                );
+            }
+        });
     }
 
     fn on_enter_notify(&mut self, window_id: WindowId) {
