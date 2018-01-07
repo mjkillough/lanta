@@ -6,7 +6,7 @@ use xcb_util::{ewmh, icccm};
 use xcb_util::keysyms::KeySymbols;
 
 use errors::*;
-use keys::{KeyCombo, KeyHandlers, ModKey};
+use keys::{KeyCombo, KeyHandlers};
 use groups::Group;
 use stack::Stack;
 
@@ -186,8 +186,7 @@ impl Connection {
         ];
         xcb::change_window_attributes_checked(&self.conn, self.root.to_x(), &values)
             .request_check()
-            .or(Err("Could not register SUBSTRUCTURE_NOTIFY/REDIRECT"
-                .to_owned()))?;
+            .or(Err("Could not register SUBSTRUCTURE_NOTIFY/REDIRECT"))?;
 
         self.enable_window_key_events(&self.root, key_handlers);
 
@@ -250,7 +249,7 @@ impl Connection {
                     .filter_map(|a| self.window_type_lookup.get(a).cloned())
                     .collect()
             })
-            .unwrap_or(Vec::new())
+            .unwrap_or_else(|_| Vec::new())
     }
 
     pub fn get_window_states(&self, window_id: &WindowId) -> Vec<WindowState> {
@@ -265,7 +264,7 @@ impl Connection {
                     .filter_map(|a| self.window_state_lookup.get(a).cloned())
                     .collect()
             })
-            .unwrap_or(Vec::new())
+            .unwrap_or_else(|_| Vec::new())
     }
 
     pub fn get_strut_partial(&self, window_id: &WindowId) -> Option<StrutPartial> {
@@ -324,7 +323,7 @@ impl Connection {
             .get_reply()
             .unwrap();
         // Cast as everywhere else uses u32.
-        (reply.width() as u32, reply.height() as u32)
+        (u32::from(reply.width()), u32::from(reply.height()))
     }
 
     /// Map a window.
@@ -459,16 +458,16 @@ impl<'a> EventLoop<'a> {
         let values = vec![
             (xcb::CONFIG_WINDOW_X as u16, event.x() as u32),
             (xcb::CONFIG_WINDOW_Y as u16, event.y() as u32),
-            (xcb::CONFIG_WINDOW_WIDTH as u16, event.width() as u32),
-            (xcb::CONFIG_WINDOW_HEIGHT as u16, event.height() as u32),
+            (xcb::CONFIG_WINDOW_WIDTH as u16, u32::from(event.width())),
+            (xcb::CONFIG_WINDOW_HEIGHT as u16, u32::from(event.height())),
             (
                 xcb::CONFIG_WINDOW_BORDER_WIDTH as u16,
-                event.border_width() as u32,
+                u32::from(event.border_width()),
             ),
             (xcb::CONFIG_WINDOW_SIBLING as u16, event.sibling() as u32),
             (
                 xcb::CONFIG_WINDOW_STACK_MODE as u16,
-                event.stack_mode() as u32,
+                u32::from(event.stack_mode()),
             ),
         ];
         let filtered_values: Vec<_> = values
@@ -504,7 +503,7 @@ impl<'a> EventLoop<'a> {
     fn on_key_press(&self, event: &xcb::KeyPressEvent) -> Option<Event> {
         let key_symbols = KeySymbols::new(&self.connection.conn);
         let keysym = key_symbols.press_lookup_keysym(event, 0);
-        let mod_mask = event.state() as u32 & ModKey::mask_all();
+        let mod_mask = u32::from(event.state());
         let key = KeyCombo { mod_mask, keysym };
         Some(Event::KeyPress(key))
     }

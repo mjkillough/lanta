@@ -1,6 +1,8 @@
-// #![deny(warnings)]
 #![feature(conservative_impl_trait, universal_impl_trait)]
 #![feature(nll)]
+#![deny(warnings)]
+#![allow(unknown_lints)]
+#![allow(clone_on_ref_ptr)]
 
 #[macro_use]
 extern crate error_chain;
@@ -46,10 +48,11 @@ pub mod keysym {
 
 /// Initializes a logger using the default configuration.
 ///
-/// Outputs to stdout and $XDG_DATA/lanta/lanta.log by default.
+/// Outputs to stdout and `$XDG_DATA/lanta/lanta.log` by default.
 /// You should feel free to initialize your own logger, instead of using this.
 pub fn intiailize_logger() -> Result<()> {
     log_panics::init();
+
 
     let xdg_dirs = xdg::BaseDirectories::with_prefix("lanta")?;
     let log_path = xdg_dirs
@@ -195,7 +198,7 @@ pub struct Lanta {
 }
 
 impl Lanta {
-    pub fn new<K>(keys: K, groups: Vec<GroupBuilder>, layouts: Vec<Box<Layout>>) -> Result<Self>
+    pub fn new<K>(keys: K, groups: Vec<GroupBuilder>, layouts: &[Box<Layout>]) -> Result<Self>
     where
         K: Into<KeyHandlers>,
     {
@@ -206,7 +209,7 @@ impl Lanta {
         let groups = Stack::from(
             groups
                 .into_iter()
-                .map(|group: GroupBuilder| group.build(connection.clone(), layouts.clone()))
+                .map(|group: GroupBuilder| group.build(connection.clone(), layouts.to_owned()))
                 .collect::<Vec<Group>>(),
         );
 
@@ -330,16 +333,16 @@ impl Lanta {
         }
     }
 
-    pub fn unmanage_window(&mut self, window_id: WindowId) {
+    pub fn unmanage_window(&mut self, window_id: &WindowId) {
         debug!("Unmanaging window: {}", window_id);
 
         // Remove the window from whichever Group it is in. Special case for
         // docks which aren't in any group.
         self.groups
             .iter_mut()
-            .find(|group| group.contains(&window_id))
-            .map(|group| group.remove_window(&window_id));
-        self.screen.remove_dock(&window_id);
+            .find(|group| group.contains(window_id))
+            .map(|group| group.remove_window(window_id));
+        self.screen.remove_dock(window_id);
 
         // The viewport may have changed.
         let viewport = self.viewport();
@@ -353,10 +356,10 @@ impl Lanta {
         for event in event_loop {
             match event {
                 Event::MapRequest(window_id) => self.on_map_request(window_id),
-                Event::UnmapNotify(window_id) => self.on_unmap_notify(window_id),
-                Event::DestroyNotify(window_id) => self.on_destroy_notify(window_id),
+                Event::UnmapNotify(window_id) => self.on_unmap_notify(&window_id),
+                Event::DestroyNotify(window_id) => self.on_destroy_notify(&window_id),
                 Event::KeyPress(key) => self.on_key_press(key),
-                Event::EnterNotify(window_id) => self.on_enter_notify(window_id),
+                Event::EnterNotify(window_id) => self.on_enter_notify(&window_id),
             }
         }
         info!("Event loop exiting");
@@ -380,14 +383,14 @@ impl Lanta {
         }
     }
 
-    fn on_unmap_notify(&mut self, window_id: WindowId) {
+    fn on_unmap_notify(&mut self, window_id: &WindowId) {
         // We only receive an unmap notify event when the window is actually
         // unmapped by its application. When our layouts unmap windows, they
         // (should) do it by disabling event tracking first.
         self.unmanage_window(window_id);
     }
 
-    fn on_destroy_notify(&mut self, window_id: WindowId) {
+    fn on_destroy_notify(&mut self, window_id: &WindowId) {
         self.unmanage_window(window_id);
     }
 
@@ -403,7 +406,7 @@ impl Lanta {
         });
     }
 
-    fn on_enter_notify(&mut self, window_id: WindowId) {
-        self.group_mut().focus(&window_id);
+    fn on_enter_notify(&mut self, window_id: &WindowId) {
+        self.group_mut().focus(window_id);
     }
 }

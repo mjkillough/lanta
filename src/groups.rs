@@ -26,7 +26,7 @@ impl GroupBuilder {
 
     pub fn build(self, connection: Rc<Connection>, layouts: Vec<Box<Layout>>) -> Group {
         let mut layouts_stack = Stack::from(layouts);
-        layouts_stack.focus(|layout| layout.name() == &self.default_layout);
+        layouts_stack.focus(|layout| layout.name() == self.default_layout);
 
         Group {
             name: self.name.clone(),
@@ -88,7 +88,7 @@ impl Group {
         // Tell X to focus the focused window for this group, or to unset
         // it's focus if we have no windows.
         match self.stack.focused() {
-            Some(window_id) => self.connection.focus_window(&window_id),
+            Some(window_id) => self.connection.focus_window(window_id),
             None => self.connection.focus_nothing(),
         }
     }

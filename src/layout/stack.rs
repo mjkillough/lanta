@@ -25,7 +25,7 @@ impl Layout for StackLayout {
     }
 
     fn layout(&self, connection: &Connection, viewport: &Viewport, stack: &Stack<WindowId>) {
-        if stack.len() == 0 {
+        if stack.is_empty() {
             return;
         }
 

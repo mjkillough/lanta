@@ -30,15 +30,17 @@ pub struct Stack<T> {
 
 impl<T> Stack<T> {
     pub fn new() -> Stack<T> {
-        Stack {
-            before: VecDeque::new(),
-            after: VecDeque::new(),
-        }
+        Stack::default()
     }
 
     /// Returns the number of elements in the stack.
     pub fn len(&self) -> usize {
         self.before.len() + self.after.len()
+    }
+
+    /// Returns whether the stack is empty.
+    pub fn is_empty(&self) -> bool {
+        self.before.is_empty() && self.after.is_empty()
     }
 
     /// Adds an element to the stack (at the end) and focuses it.
@@ -176,6 +178,15 @@ impl<T> Stack<T> {
     }
 }
 
+impl<T> Default for Stack<T> {
+    fn default() -> Self {
+        Stack {
+            before: VecDeque::default(),
+            after: VecDeque::default(),
+        }
+    }
+}
+
 impl<T> From<Vec<T>> for Stack<T> {
     fn from(vec: Vec<T>) -> Self {
         Stack {
@@ -221,9 +232,19 @@ mod test {
     }
 
     #[test]
-    fn len() {
+    fn test_len() {
         let stack = stack_from_pieces(vec![1, 2], vec![2, 3]);
         assert_eq!(stack.len(), 4);
+    }
+
+    #[test]
+    fn test_is_empty() {
+        let stack = Stack::default();
+        assert_eq!(stack.is_empty(), true);
+        let stack = stack_from_pieces(vec![1, 2], vec![]);
+        assert_eq!(stack.is_empty(), false);
+        let stack = stack_from_pieces(vec![], vec![3, 4]);
+        assert_eq!(stack.is_empty(), false);
     }
 
     #[test]

@@ -89,7 +89,7 @@ fn run() -> Result<()> {
         ]
     };
 
-    Lanta::new(keys, groups, layouts)?.run();
+    Lanta::new(keys, groups, &layouts)?.run();
 
     Ok(())
 }

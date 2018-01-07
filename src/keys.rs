@@ -29,15 +29,15 @@ impl ModKey {
     }
 
     fn mask(&self) -> ModMask {
-        match self {
-            &ModKey::Shift => xcb::MOD_MASK_SHIFT,
-            &ModKey::Lock => xcb::MOD_MASK_LOCK,
-            &ModKey::Control => xcb::MOD_MASK_CONTROL,
-            &ModKey::Mod1 => xcb::MOD_MASK_1,
-            &ModKey::Mod2 => xcb::MOD_MASK_2,
-            &ModKey::Mod3 => xcb::MOD_MASK_3,
-            &ModKey::Mod4 => xcb::MOD_MASK_4,
-            &ModKey::Mod5 => xcb::MOD_MASK_5,
+        match *self {
+            ModKey::Shift => xcb::MOD_MASK_SHIFT,
+            ModKey::Lock => xcb::MOD_MASK_LOCK,
+            ModKey::Control => xcb::MOD_MASK_CONTROL,
+            ModKey::Mod1 => xcb::MOD_MASK_1,
+            ModKey::Mod2 => xcb::MOD_MASK_2,
+            ModKey::Mod3 => xcb::MOD_MASK_3,
+            ModKey::Mod4 => xcb::MOD_MASK_4,
+            ModKey::Mod5 => xcb::MOD_MASK_5,
         }
     }
 }
@@ -55,7 +55,7 @@ pub struct KeyCombo {
 }
 
 impl KeyCombo {
-    fn new(mods: Vec<ModKey>, keysym: Key) -> KeyCombo {
+    fn new(mods: &[ModKey], keysym: Key) -> KeyCombo {
         let mask = mods.iter().fold(0, |mask, mod_key| mask | mod_key.mask());
         KeyCombo {
             mod_mask: mask,
@@ -75,7 +75,7 @@ impl KeyHandlers {
     }
 
     pub fn get(&self, key_combo: &KeyCombo) -> Option<Command> {
-        self.hashmap.get(key_combo).map(|rc| rc.clone())
+        self.hashmap.get(key_combo).cloned()
     }
 }
 
@@ -83,7 +83,7 @@ impl From<Vec<(Vec<ModKey>, Key, Command)>> for KeyHandlers {
     fn from(handlers: Vec<(Vec<ModKey>, Key, Command)>) -> KeyHandlers {
         let mut hashmap = HashMap::new();
         for (modkeys, keysym, handler) in handlers {
-            hashmap.insert(KeyCombo::new(modkeys, keysym), handler);
+            hashmap.insert(KeyCombo::new(&modkeys, keysym), handler);
         }
         KeyHandlers { hashmap }
     }
