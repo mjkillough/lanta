@@ -33,8 +33,8 @@ impl ModKey {
             | xcb::MOD_MASK_5
     }
 
-    fn mask(&self) -> ModMask {
-        match *self {
+    fn mask(self) -> ModMask {
+        match self {
             ModKey::Shift => xcb::MOD_MASK_SHIFT,
             ModKey::Lock => xcb::MOD_MASK_LOCK,
             ModKey::Control => xcb::MOD_MASK_CONTROL,
@@ -59,11 +59,8 @@ pub struct KeyCombo {
 
 impl KeyCombo {
     fn new(mods: &[ModKey], keysym: Key) -> KeyCombo {
-        let mask = mods.iter().fold(0, |mask, mod_key| mask | mod_key.mask());
-        KeyCombo {
-            mod_mask: mask,
-            keysym: keysym,
-        }
+        let mod_mask = mods.iter().fold(0, |mask, mod_key| mask | mod_key.mask());
+        KeyCombo { mod_mask, keysym }
     }
 }
 

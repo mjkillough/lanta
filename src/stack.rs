@@ -162,7 +162,7 @@ impl<T> Stack<T> {
         }
         if self.after.len() > 1 {
             self.before.push_back(self.after.remove(1).unwrap());
-        } else if self.after.len() == 1 && self.before.len() >= 1 {
+        } else if self.after.len() == 1 && !self.before.is_empty() {
             self.before.push_front(self.after.pop_front().unwrap());
             swap(&mut self.after, &mut self.before);
         }
@@ -170,9 +170,9 @@ impl<T> Stack<T> {
 
     /// Inserts the currently focused element before the previous element.
     pub fn shuffle_previous(&mut self) {
-        if self.after.len() >= 1 && self.before.len() >= 1 {
+        if !self.after.is_empty() && !self.before.is_empty() {
             self.after.insert(1, self.before.pop_back().unwrap());
-        } else if self.after.len() >= 1 {
+        } else if !self.after.is_empty() {
             self.before.extend(self.after.drain(1..));
         }
     }

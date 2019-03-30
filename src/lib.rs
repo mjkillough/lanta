@@ -192,9 +192,9 @@ impl Lanta {
         );
 
         let mut wm = Lanta {
+            keys,
+            groups,
             connection: connection.clone(),
-            keys: keys,
-            groups: groups,
             screen: Screen::default(),
         };
 
@@ -261,17 +261,18 @@ impl Lanta {
             return;
         }
 
-        let removed = self.group_mut().remove_focused();
-        let new_group_opt = self.groups.iter_mut().find(|group| group.name() == name);
-        match new_group_opt {
-            Some(new_group) => {
-                removed.map(|window| new_group.add_window(window));
-            }
-            None => {
-                // It would be nice to put the window back in its group (or avoid taking it out
-                // of its group until we've checked the new group exists), but it's difficult
-                // to do this while keeping the borrow checker happy.
-                error!("Moved window to non-existent group: {}", name);
+        if let Some(removed) = self.group_mut().remove_focused() {
+            let new_group = self.groups.iter_mut().find(|group| group.name() == name);
+            match new_group {
+                Some(new_group) => {
+                    new_group.add_window(removed);
+                }
+                None => {
+                    // It would be nice to put the window back in its group (or avoid taking it out
+                    // of its group until we've checked the new group exists), but it's difficult
+                    // to do this while keeping the borrow checker happy.
+                    error!("Moved window to non-existent group: {}", name);
+                }
             }
         }
     }
@@ -374,11 +375,11 @@ impl Lanta {
     }
 
     fn on_key_press(&mut self, key: KeyCombo) {
-        self.keys.get(&key).map(move |handler| {
+        if let Some(handler) = self.keys.get(&key) {
             if let Err(error) = (handler)(self) {
                 error!("Error running command for key command {:?}: {}", key, error);
             }
-        });
+        }
     }
 
     fn on_enter_notify(&mut self, window_id: &WindowId) {

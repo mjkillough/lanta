@@ -28,8 +28,8 @@ impl GroupBuilder {
         layouts_stack.focus(|layout| layout.name() == self.default_layout);
 
         Group {
+            connection,
             name: self.name.clone(),
-            connection: connection,
             active: false,
             stack: Stack::new(),
             layouts: layouts_stack,
@@ -79,9 +79,9 @@ impl Group {
             return;
         }
 
-        self.layouts
-            .focused()
-            .map(|l| l.layout(&self.connection, &self.viewport, &self.stack));
+        if let Some(layout) = self.layouts.focused() {
+            layout.layout(&self.connection, &self.viewport, &self.stack)
+        }
 
         // Tell X to focus the focused window for this group, or to unset
         // it's focus if we have no windows.
