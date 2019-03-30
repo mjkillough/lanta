@@ -1,6 +1,4 @@
 // #![deny(warnings)]
-#![allow(unknown_lints)]
-#![allow(clone_on_ref_ptr)]
 
 #[macro_use]
 extern crate error_chain;
