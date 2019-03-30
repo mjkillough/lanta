@@ -2,7 +2,6 @@ use std::collections::HashMap;
 use std::fmt;
 
 use failure::{format_err, ResultExt};
-use xcb;
 use xcb_util::keysyms::KeySymbols;
 use xcb_util::{ewmh, icccm};
 
