@@ -5,10 +5,10 @@ use xcb;
 use xcb_util::keysyms::KeySymbols;
 use xcb_util::{ewmh, icccm};
 
-use errors::*;
-use groups::Group;
-use keys::{KeyCombo, KeyHandlers};
-use stack::Stack;
+use crate::errors::*;
+use crate::groups::Group;
+use crate::keys::{KeyCombo, KeyHandlers};
+use crate::stack::Stack;
 
 pub use self::ewmh::StrutPartial;
 

@@ -1,7 +1,7 @@
-use layout::Layout;
-use stack::Stack;
-use x::{Connection, WindowId};
-use Viewport;
+use crate::layout::Layout;
+use crate::stack::Stack;
+use crate::x::{Connection, WindowId};
+use crate::Viewport;
 
 #[derive(Clone)]
 pub struct StackLayout {

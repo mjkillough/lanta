@@ -3,7 +3,7 @@ use std::os::raw::c_uint;
 
 use xcb;
 
-use cmd::Command;
+use crate::cmd::Command;
 
 /// Represents a modifier key.
 #[allow(dead_code)]

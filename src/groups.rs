@@ -1,9 +1,9 @@
 use std::rc::Rc;
 
 use super::Viewport;
-use layout::Layout;
-use stack::Stack;
-use x::{Connection, WindowId};
+use crate::layout::Layout;
+use crate::stack::Stack;
+use crate::x::{Connection, WindowId};
 
 #[derive(Clone)]
 pub struct GroupBuilder {

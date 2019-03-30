@@ -1,7 +1,7 @@
 use std::rc::Rc;
 
-use errors::*;
-use Lanta;
+use crate::errors::*;
+use crate::Lanta;
 
 pub type Command = Rc<Fn(&mut Lanta) -> Result<()>>;
 
@@ -15,7 +15,7 @@ pub mod lazy {
     use std::sync::Mutex;
 
     use super::Command;
-    use errors::*;
+    use crate::errors::*;
 
     /// Closes the currently focused window.
     pub fn close_focused_window() -> Command {

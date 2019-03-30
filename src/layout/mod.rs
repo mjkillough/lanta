@@ -1,8 +1,8 @@
 use std::fmt;
 
-use stack::Stack;
-use x::{Connection, WindowId};
-use Viewport;
+use crate::stack::Stack;
+use crate::x::{Connection, WindowId};
+use crate::Viewport;
 
 mod stack;
 mod tiled;

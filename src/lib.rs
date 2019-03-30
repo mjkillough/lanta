@@ -29,15 +29,15 @@ pub mod layout;
 mod stack;
 mod x;
 
-use errors::*;
-use groups::Group;
-use keys::{KeyCombo, KeyHandlers};
-use layout::Layout;
-use x::{Connection, Event, StrutPartial, WindowId, WindowType};
+use crate::errors::*;
+use crate::groups::Group;
+use crate::keys::{KeyCombo, KeyHandlers};
+use crate::layout::Layout;
+use crate::x::{Connection, Event, StrutPartial, WindowId, WindowType};
 
-pub use groups::GroupBuilder;
-pub use keys::ModKey;
-pub use stack::Stack;
+pub use crate::groups::GroupBuilder;
+pub use crate::keys::ModKey;
+pub use crate::stack::Stack;
 
 pub mod keysym {
     pub use x11::keysym::*;
