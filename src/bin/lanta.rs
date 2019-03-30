@@ -20,6 +20,8 @@ fn main() -> Result<()> {
 
     let modkey = ModKey::Mod4;
     let shift = ModKey::Shift;
+
+    #[rustfmt::skip]
     let mut keys = keys![
         ([modkey], XK_w, cmd::lazy::close_focused_window()),
         ([modkey], XK_j, cmd::lazy::focus_next()),
@@ -27,43 +29,21 @@ fn main() -> Result<()> {
         ([modkey, shift], XK_j, cmd::lazy::shuffle_next()),
         ([modkey, shift], XK_k, cmd::lazy::shuffle_previous()),
         ([modkey], XK_Tab, cmd::lazy::layout_next()),
+
         ([modkey], XK_Return, spawn!("urxvt")),
         ([modkey], XK_c, spawn!("firefox-nightly")),
         ([modkey], XK_v, spawn!("code-oss")),
-        (
-            [modkey],
-            XK_b,
-            spawn!("spotify --force-device-scale-factor=2")
-        ),
+        ([modkey], XK_b, spawn!("spotify --force-device-scale-factor=2")),
         ([modkey], XK_q, spawn!("change-wallpaper")),
-        (
-            [],
-            XF86XK_MonBrightnessUp,
-            spawn!("xbacklight", "-inc", "10")
-        ),
-        (
-            [],
-            XF86XK_MonBrightnessDown,
-            spawn!("xbacklight", "-dec", "10")
-        ),
+
+        ([], XF86XK_MonBrightnessUp, spawn!("xbacklight", "-inc", "10")),
+        ([], XF86XK_MonBrightnessDown, spawn!("xbacklight", "-dec", "10")),
         ([], XF86XK_AudioPrev, spawn!("playerctl", "previous")),
         ([], XF86XK_AudioPlay, spawn!("playerctl", "play-pause")),
         ([], XF86XK_AudioNext, spawn!("playerctl", "next")),
-        (
-            [],
-            XF86XK_AudioRaiseVolume,
-            spawn!("amixer", "-q", "set", "Master", "5%+")
-        ),
-        (
-            [],
-            XF86XK_AudioLowerVolume,
-            spawn!("amixer", "-q", "set", "Master", "5%-")
-        ),
-        (
-            [],
-            XF86XK_AudioMute,
-            spawn!("amixer", "-q", "set", "Master", "toggle")
-        ),
+        ([], XF86XK_AudioRaiseVolume, spawn!("amixer", "-q", "set", "Master", "5%+")),
+        ([], XF86XK_AudioLowerVolume, spawn!("amixer", "-q", "set", "Master", "5%-")),
+        ([], XF86XK_AudioMute, spawn!("amixer", "-q", "set", "Master", "toggle")),
     ];
 
     let padding = 20;
