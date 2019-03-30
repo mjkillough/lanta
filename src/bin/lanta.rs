@@ -31,7 +31,7 @@ fn main() -> Result<()> {
         ([modkey], XK_Tab, cmd::lazy::layout_next()),
 
         ([modkey], XK_Return, spawn!("urxvt")),
-        ([modkey], XK_c, spawn!("firefox-nightly")),
+        ([modkey], XK_c, spawn!("firefox")),
         ([modkey], XK_v, spawn!("code-oss")),
         ([modkey], XK_b, spawn!("spotify --force-device-scale-factor=2")),
         ([modkey], XK_q, spawn!("change-wallpaper")),
