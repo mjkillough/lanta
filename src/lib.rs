@@ -4,16 +4,8 @@
 
 #[macro_use]
 extern crate error_chain;
-use fern;
-
 #[macro_use]
 extern crate log;
-use log_panics;
-use time;
-
-use xcb;
-
-use xdg;
 
 use std::cell::RefCell;
 use std::cmp;
