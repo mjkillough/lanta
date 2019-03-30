@@ -1,10 +1,9 @@
 use std::rc::Rc;
 
-use Lanta;
 use errors::*;
+use Lanta;
 
 pub type Command = Rc<Fn(&mut Lanta) -> Result<()>>;
-
 
 /// Lazy-functions which return a `Command` to do the requested action.
 // TODO: Consider offering non-lazy versions and then having simple lazy
@@ -15,8 +14,8 @@ pub mod lazy {
     use std::rc::Rc;
     use std::sync::Mutex;
 
-    use errors::*;
     use super::Command;
+    use errors::*;
 
     /// Closes the currently focused window.
     pub fn close_focused_window() -> Command {

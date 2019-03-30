@@ -1,8 +1,7 @@
 use layout::Layout;
 use stack::Stack;
-use Viewport;
 use x::{Connection, WindowId};
-
+use Viewport;
 
 #[derive(Clone)]
 pub struct TiledLayout {

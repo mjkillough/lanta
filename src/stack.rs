@@ -1,7 +1,6 @@
 use std::collections::VecDeque;
 use std::mem::swap;
 
-
 /// A stack that maintains a pointer to a focused element.
 ///
 /// This primarily exists to keep track of the stack of windows in each
@@ -91,7 +90,8 @@ impl<T> Stack<T> {
         if let Some(position) = self.before.iter().position(&mut p) {
             self.before.remove(position).unwrap()
         } else {
-            let position = self.after
+            let position = self
+                .after
                 .iter()
                 .position(&mut p)
                 .expect("No element in stack matches predicate");
@@ -195,7 +195,6 @@ impl<T> From<Vec<T>> for Stack<T> {
         }
     }
 }
-
 
 #[cfg(test)]
 mod test {

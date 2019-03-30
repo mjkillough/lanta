@@ -1,15 +1,14 @@
 use std::fmt;
 
 use stack::Stack;
-use Viewport;
 use x::{Connection, WindowId};
+use Viewport;
 
 mod stack;
 mod tiled;
 
 pub use self::stack::StackLayout;
 pub use self::tiled::TiledLayout;
-
 
 pub trait LayoutClone {
     fn clone_box(&self) -> Box<Layout>;
@@ -23,7 +22,6 @@ where
         Box::new(self.clone())
     }
 }
-
 
 pub trait Layout: LayoutClone {
     fn name(&self) -> &str;

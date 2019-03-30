@@ -5,7 +5,6 @@ use xcb;
 
 use cmd::Command;
 
-
 /// Represents a modifier key.
 #[allow(dead_code)]
 #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
@@ -24,8 +23,14 @@ type ModMask = c_uint;
 
 impl ModKey {
     pub fn mask_all() -> ModMask {
-        xcb::MOD_MASK_SHIFT | xcb::MOD_MASK_LOCK | xcb::MOD_MASK_CONTROL | xcb::MOD_MASK_1
-            | xcb::MOD_MASK_2 | xcb::MOD_MASK_3 | xcb::MOD_MASK_4 | xcb::MOD_MASK_5
+        xcb::MOD_MASK_SHIFT
+            | xcb::MOD_MASK_LOCK
+            | xcb::MOD_MASK_CONTROL
+            | xcb::MOD_MASK_1
+            | xcb::MOD_MASK_2
+            | xcb::MOD_MASK_3
+            | xcb::MOD_MASK_4
+            | xcb::MOD_MASK_5
     }
 
     fn mask(&self) -> ModMask {
@@ -42,10 +47,8 @@ impl ModKey {
     }
 }
 
-
 /// A single key, of the same type as the `x11::keysym` constants.
 type Key = c_uint;
-
 
 /// A combination of zero or more mods and a key.
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
@@ -63,7 +66,6 @@ impl KeyCombo {
         }
     }
 }
-
 
 pub struct KeyHandlers {
     hashmap: HashMap<KeyCombo, Command>,

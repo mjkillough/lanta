@@ -45,14 +45,12 @@ pub mod keysym {
     pub use x11::keysym::*;
 }
 
-
 /// Initializes a logger using the default configuration.
 ///
 /// Outputs to stdout and `$XDG_DATA/lanta/lanta.log` by default.
 /// You should feel free to initialize your own logger, instead of using this.
 pub fn intiailize_logger() -> Result<()> {
     log_panics::init();
-
 
     let xdg_dirs = xdg::BaseDirectories::with_prefix("lanta")?;
     let log_path = xdg_dirs
@@ -76,7 +74,6 @@ pub fn intiailize_logger() -> Result<()> {
     Ok(())
 }
 
-
 #[macro_export]
 macro_rules! keys {
     [ $( ([$( $mod:ident ),*], $key:ident, $cmd:expr) ),+ $(,)*] => (
@@ -85,7 +82,6 @@ macro_rules! keys {
         ]
     )
 }
-
 
 #[macro_export]
 macro_rules! groups {
@@ -115,7 +111,6 @@ macro_rules! groups {
     }}
 }
 
-
 #[macro_export]
 macro_rules! layouts {
     [$( $layout:expr ),+ $(,)*] => (
@@ -127,7 +122,6 @@ macro_rules! layouts {
     )
 }
 
-
 #[derive(Clone, Copy, Debug, Default)]
 pub struct Viewport {
     pub x: u32,
@@ -136,12 +130,10 @@ pub struct Viewport {
     pub height: u32,
 }
 
-
 struct Dock {
     window_id: WindowId,
     strut_partial: Option<StrutPartial>,
 }
-
 
 #[derive(Default)]
 struct Screen {
@@ -164,7 +156,8 @@ impl Screen {
     /// Figure out the usable area of the screen based on the STRUT_PARTIAL of
     /// all docks.
     pub fn viewport(&self, screen_width: u32, screen_height: u32) -> Viewport {
-        let (left, right, top, bottom) = self.vec
+        let (left, right, top, bottom) = self
+            .vec
             .borrow()
             .iter()
             .filter_map(|o| o.strut_partial.as_ref())
@@ -188,7 +181,6 @@ impl Screen {
         viewport
     }
 }
-
 
 pub struct Lanta {
     connection: Rc<Connection>,
@@ -233,7 +225,8 @@ impl Lanta {
     }
 
     fn viewport(&self) -> Viewport {
-        let (width, height) = self.connection
+        let (width, height) = self
+            .connection
             .get_window_geometry(self.connection.root_window_id());
         self.screen.viewport(width, height)
     }

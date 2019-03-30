@@ -1,10 +1,9 @@
 use std::rc::Rc;
 
+use super::Viewport;
 use layout::Layout;
 use stack::Stack;
 use x::{Connection, WindowId};
-use super::Viewport;
-
 
 #[derive(Clone)]
 pub struct GroupBuilder {
@@ -38,7 +37,6 @@ impl GroupBuilder {
         }
     }
 }
-
 
 pub struct Group {
     name: String,

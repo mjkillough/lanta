@@ -3,10 +3,9 @@ extern crate error_chain;
 #[macro_use]
 extern crate lanta;
 
-use lanta::{cmd, Lanta, ModKey};
 use lanta::errors::*;
 use lanta::layout::*;
-
+use lanta::{cmd, Lanta, ModKey};
 
 macro_rules! spawn {
     ($cmd:expr) => (::lanta::cmd::lazy::spawn(::std::process::Command::new($cmd)));
@@ -18,7 +17,6 @@ macro_rules! spawn {
         ::lanta::cmd::lazy::spawn(command)
     }}
 }
-
 
 fn run() -> Result<()> {
     lanta::intiailize_logger()?;
@@ -78,7 +76,7 @@ fn run() -> Result<()> {
         TiledLayout::new("tiled", padding),
     ];
 
-    let groups = groups!{
+    let groups = groups! {
         keys,
         shift,
         [

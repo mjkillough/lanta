@@ -1,18 +1,16 @@
-use std::fmt;
 use std::collections::HashMap;
+use std::fmt;
 
 use xcb;
-use xcb_util::{ewmh, icccm};
 use xcb_util::keysyms::KeySymbols;
+use xcb_util::{ewmh, icccm};
 
 use errors::*;
-use keys::{KeyCombo, KeyHandlers};
 use groups::Group;
+use keys::{KeyCombo, KeyHandlers};
 use stack::Stack;
 
-
 pub use self::ewmh::StrutPartial;
-
 
 /// A handle to an X Window.
 #[derive(Debug, PartialEq)]
@@ -29,7 +27,6 @@ impl fmt::Display for WindowId {
         write!(f, "{}", self.0)
     }
 }
-
 
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub enum WindowType {
@@ -49,7 +46,6 @@ pub enum WindowType {
     Normal,
 }
 
-
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub enum WindowState {
     Modal,
@@ -65,7 +61,6 @@ pub enum WindowState {
     Below,
     DemandsAttention,
 }
-
 
 macro_rules! atoms {
     ( $( $name:ident ),+ ) => {
@@ -90,9 +85,7 @@ macro_rules! atoms {
     ( $( $name:ident ),+ , ) => (atoms!($( $name ),+);)
 }
 
-
 atoms!(WM_DELETE_WINDOW, WM_PROTOCOLS,);
-
 
 pub struct Connection {
     conn: ewmh::Connection,
@@ -103,14 +96,14 @@ pub struct Connection {
     window_state_lookup: HashMap<xcb::Atom, WindowState>,
 }
 
-
 impl Connection {
     /// Opens a connection to the X server, returning a new Connection object.
     pub fn connect() -> Result<Connection> {
         let (conn, screen_idx) =
             xcb::Connection::connect(None).chain_err(|| "Failed to connect to X server")?;
         let conn = ewmh::Connection::connect(conn).map_err(|(e, _)| e)?;
-        let root = conn.get_setup()
+        let root = conn
+            .get_setup()
             .roots()
             .nth(screen_idx as usize)
             .ok_or("Invalid screen")?
@@ -178,12 +171,10 @@ impl Connection {
     /// If there is already a window manager on the display, then this will
     /// fail.
     pub fn install_as_wm(&self, key_handlers: &KeyHandlers) -> Result<()> {
-        let values = [
-            (
-                xcb::CW_EVENT_MASK,
-                xcb::EVENT_MASK_SUBSTRUCTURE_NOTIFY | xcb::EVENT_MASK_SUBSTRUCTURE_REDIRECT,
-            ),
-        ];
+        let values = [(
+            xcb::CW_EVENT_MASK,
+            xcb::EVENT_MASK_SUBSTRUCTURE_NOTIFY | xcb::EVENT_MASK_SUBSTRUCTURE_REDIRECT,
+        )];
         xcb::change_window_attributes_checked(&self.conn, self.root.to_x(), &values)
             .request_check()
             .or(Err("Could not register SUBSTRUCTURE_NOTIFY/REDIRECT"))?;
@@ -278,7 +269,8 @@ impl Connection {
     /// The window will be closed gracefully using the ICCCM WM_DELETE_WINDOW
     /// protocol if it is supported.
     pub fn close_window(&self, window_id: &WindowId) {
-        let has_wm_delete_window = self.get_wm_protocols(window_id)
+        let has_wm_delete_window = self
+            .get_wm_protocols(window_id)
             .map(|protocols| protocols.contains(&self.atoms.WM_DELETE_WINDOW))
             .unwrap_or(false);
 
@@ -365,12 +357,10 @@ impl Connection {
     }
 
     pub fn enable_window_tracking(&self, window_id: &WindowId) {
-        let values = [
-            (
-                xcb::CW_EVENT_MASK,
-                xcb::EVENT_MASK_ENTER_WINDOW | xcb::EVENT_MASK_STRUCTURE_NOTIFY,
-            ),
-        ];
+        let values = [(
+            xcb::CW_EVENT_MASK,
+            xcb::EVENT_MASK_ENTER_WINDOW | xcb::EVENT_MASK_STRUCTURE_NOTIFY,
+        )];
         xcb::change_window_attributes(&self.conn, window_id.to_x(), &values);
     }
 
@@ -399,7 +389,6 @@ impl Connection {
     }
 }
 
-
 /// Events received from the `EventLoop`.
 pub enum Event {
     MapRequest(WindowId),
@@ -408,7 +397,6 @@ pub enum Event {
     KeyPress(KeyCombo),
     EnterNotify(WindowId),
 }
-
 
 /// An iterator that yields events from the X event loop.
 ///
@@ -426,7 +414,8 @@ impl<'a> Iterator for EventLoop<'a> {
             // have) just yielded.
             self.connection.flush();
 
-            let event = self.connection
+            let event = self
+                .connection
                 .conn
                 .wait_for_event()
                 .expect("wait_for_event() returned None: IO error?");
