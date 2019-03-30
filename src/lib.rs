@@ -1,25 +1,21 @@
 // #![deny(warnings)]
 
 #[macro_use]
-extern crate error_chain;
-#[macro_use]
 extern crate log;
 
 use std::cell::RefCell;
 use std::cmp;
 use std::rc::Rc;
 
-use error_chain::ChainedError;
+use failure::{Error, ResultExt};
 
 pub mod cmd;
-pub mod errors;
 mod groups;
 mod keys;
 pub mod layout;
 mod stack;
 mod x;
 
-use crate::errors::*;
 use crate::groups::Group;
 use crate::keys::{KeyCombo, KeyHandlers};
 use crate::layout::Layout;
@@ -28,6 +24,8 @@ use crate::x::{Connection, Event, StrutPartial, WindowId, WindowType};
 pub use crate::groups::GroupBuilder;
 pub use crate::keys::ModKey;
 pub use crate::stack::Stack;
+
+pub type Result<T> = std::result::Result<T, Error>;
 
 pub mod keysym {
     pub use x11::keysym::*;
@@ -43,7 +41,7 @@ pub fn intiailize_logger() -> Result<()> {
     let xdg_dirs = xdg::BaseDirectories::with_prefix("lanta")?;
     let log_path = xdg_dirs
         .place_data_file("lanta.log")
-        .chain_err(|| "Could not create log file")?;
+        .context("Could not create log file")?;
 
     fern::Dispatch::new()
         .format(|out, message, record| {
@@ -378,11 +376,7 @@ impl Lanta {
     fn on_key_press(&mut self, key: KeyCombo) {
         self.keys.get(&key).map(move |handler| {
             if let Err(error) = (handler)(self) {
-                error!(
-                    "Error running command for key command {:?}: {}",
-                    key,
-                    error.display_chain().to_string()
-                );
+                error!("Error running command for key command {:?}: {}", key, error);
             }
         });
     }

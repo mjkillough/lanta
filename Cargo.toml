@@ -9,8 +9,8 @@ name = "lanta"
 doc = false
 
 [dependencies]
-error-chain = "0.11"
 fern = "0.5"
+failure = "0.1"
 libc = "0.2"
 log = "0.4"
 log-panics = { version = "2.0", features = ["with-backtrace"] }

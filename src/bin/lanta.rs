@@ -1,9 +1,8 @@
 #[macro_use]
 extern crate lanta;
 
-use lanta::errors::*;
 use lanta::layout::*;
-use lanta::{cmd, Lanta, ModKey};
+use lanta::{cmd, Lanta, ModKey, Result};
 
 macro_rules! spawn {
     ($cmd:expr) => (::lanta::cmd::lazy::spawn(::std::process::Command::new($cmd)));

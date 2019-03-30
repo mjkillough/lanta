@@ -1,14 +1,15 @@
 use std::collections::HashMap;
 use std::fmt;
 
+use failure::{format_err, ResultExt};
 use xcb;
 use xcb_util::keysyms::KeySymbols;
 use xcb_util::{ewmh, icccm};
 
-use crate::errors::*;
 use crate::groups::Group;
 use crate::keys::{KeyCombo, KeyHandlers};
 use crate::stack::Stack;
+use crate::Result;
 
 pub use self::ewmh::StrutPartial;
 
@@ -100,16 +101,16 @@ impl Connection {
     /// Opens a connection to the X server, returning a new Connection object.
     pub fn connect() -> Result<Connection> {
         let (conn, screen_idx) =
-            xcb::Connection::connect(None).chain_err(|| "Failed to connect to X server")?;
+            xcb::Connection::connect(None).context("Failed to connect to X server")?;
         let conn = ewmh::Connection::connect(conn).map_err(|(e, _)| e)?;
         let root = conn
             .get_setup()
             .roots()
             .nth(screen_idx as usize)
-            .ok_or("Invalid screen")?
+            .ok_or_else(|| format_err!("Invalid screen"))?
             .root();
 
-        let atoms = InternedAtoms::new(&conn).or(Err("Failed to intern atoms"))?;
+        let atoms = InternedAtoms::new(&conn).context("Failed to intern atoms")?;
 
         let mut types = HashMap::new();
         types.insert(conn.WM_WINDOW_TYPE_DESKTOP(), WindowType::Desktop);
@@ -177,7 +178,7 @@ impl Connection {
         )];
         xcb::change_window_attributes_checked(&self.conn, self.root.to_x(), &values)
             .request_check()
-            .or(Err("Could not register SUBSTRUCTURE_NOTIFY/REDIRECT"))?;
+            .context("Could not register SUBSTRUCTURE_NOTIFY/REDIRECT")?;
 
         self.enable_window_key_events(&self.root, key_handlers);
 

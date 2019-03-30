@@ -1,7 +1,7 @@
 use std::rc::Rc;
 
-use crate::errors::*;
 use crate::Lanta;
+use crate::Result;
 
 pub type Command = Rc<dyn Fn(&mut Lanta) -> Result<()>>;
 
@@ -14,8 +14,9 @@ pub mod lazy {
     use std::rc::Rc;
     use std::sync::Mutex;
 
+    use failure::ResultExt;
+
     use super::Command;
-    use crate::errors::*;
 
     /// Closes the currently focused window.
     pub fn close_focused_window() -> Command {
@@ -77,7 +78,7 @@ pub mod lazy {
             info!("Spawning: {:?}", *command);
             command
                 .spawn()
-                .chain_err(|| format!("Could not spawn command: {:?}", *command))?;
+                .with_context(|_| format!("Could not spawn command: {:?}", *command))?;
             Ok(())
         })
     }
