@@ -23,7 +23,7 @@ impl WindowId {
 }
 
 impl fmt::Display for WindowId {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", self.0)
     }
 }
@@ -384,7 +384,7 @@ impl Connection {
         ewmh::set_active_window(&self.conn, self.screen_idx, xcb::NONE);
     }
 
-    pub fn get_event_loop(&self) -> EventLoop {
+    pub fn get_event_loop(&self) -> EventLoop<'_> {
         EventLoop { connection: self }
     }
 }

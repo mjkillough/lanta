@@ -4,16 +4,16 @@
 
 #[macro_use]
 extern crate error_chain;
-extern crate fern;
-extern crate libc;
+use fern;
+
 #[macro_use]
 extern crate log;
-extern crate log_panics;
-extern crate time;
-extern crate x11;
-extern crate xcb;
-extern crate xcb_util;
-extern crate xdg;
+use log_panics;
+use time;
+
+use xcb;
+
+use xdg;
 
 use std::cell::RefCell;
 use std::cmp;
@@ -188,7 +188,7 @@ pub struct Lanta {
 }
 
 impl Lanta {
-    pub fn new<K>(keys: K, groups: Vec<GroupBuilder>, layouts: &[Box<Layout>]) -> Result<Self>
+    pub fn new<K>(keys: K, groups: Vec<GroupBuilder>, layouts: &[Box<dyn Layout>]) -> Result<Self>
     where
         K: Into<KeyHandlers>,
     {

@@ -3,7 +3,7 @@ use std::rc::Rc;
 use crate::errors::*;
 use crate::Lanta;
 
-pub type Command = Rc<Fn(&mut Lanta) -> Result<()>>;
+pub type Command = Rc<dyn Fn(&mut Lanta) -> Result<()>>;
 
 /// Lazy-functions which return a `Command` to do the requested action.
 // TODO: Consider offering non-lazy versions and then having simple lazy

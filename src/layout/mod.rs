@@ -11,14 +11,14 @@ pub use self::stack::StackLayout;
 pub use self::tiled::TiledLayout;
 
 pub trait LayoutClone {
-    fn clone_box(&self) -> Box<Layout>;
+    fn clone_box(&self) -> Box<dyn Layout>;
 }
 
 impl<T> LayoutClone for T
 where
     T: 'static + Layout + Clone,
 {
-    fn clone_box(&self) -> Box<Layout> {
+    fn clone_box(&self) -> Box<dyn Layout> {
         Box::new(self.clone())
     }
 }
@@ -28,14 +28,14 @@ pub trait Layout: LayoutClone {
     fn layout(&self, connection: &Connection, viewport: &Viewport, stack: &Stack<WindowId>);
 }
 
-impl Clone for Box<Layout> {
-    fn clone(&self) -> Box<Layout> {
+impl Clone for Box<dyn Layout> {
+    fn clone(&self) -> Box<dyn Layout> {
         self.clone_box()
     }
 }
 
-impl fmt::Debug for Layout {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+impl fmt::Debug for dyn Layout {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "Layout {{ \"{}\" }}", self.name())
     }
 }

@@ -23,7 +23,7 @@ impl GroupBuilder {
         }
     }
 
-    pub fn build(self, connection: Rc<Connection>, layouts: Vec<Box<Layout>>) -> Group {
+    pub fn build(self, connection: Rc<Connection>, layouts: Vec<Box<dyn Layout>>) -> Group {
         let mut layouts_stack = Stack::from(layouts);
         layouts_stack.focus(|layout| layout.name() == self.default_layout);
 
@@ -43,7 +43,7 @@ pub struct Group {
     connection: Rc<Connection>,
     active: bool,
     stack: Stack<WindowId>,
-    layouts: Stack<Box<Layout>>,
+    layouts: Stack<Box<dyn Layout>>,
     viewport: Viewport,
 }
 
