@@ -1,6 +1,4 @@
 #[macro_use]
-extern crate error_chain;
-#[macro_use]
 extern crate lanta;
 
 use lanta::errors::*;
@@ -18,7 +16,7 @@ macro_rules! spawn {
     }}
 }
 
-fn run() -> Result<()> {
+fn main() -> Result<()> {
     lanta::intiailize_logger()?;
 
     let modkey = ModKey::Mod4;
@@ -91,5 +89,3 @@ fn run() -> Result<()> {
 
     Ok(())
 }
-
-quick_main!(run);
