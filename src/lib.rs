@@ -1,6 +1,6 @@
 #![feature(conservative_impl_trait, universal_impl_trait)]
 #![feature(nll)]
-#![deny(warnings)]
+// #![deny(warnings)]
 #![allow(unknown_lints)]
 #![allow(clone_on_ref_ptr)]
 
