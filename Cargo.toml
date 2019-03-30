@@ -15,7 +15,7 @@ libc = "0.2"
 log = "0.4"
 log-panics = { version = "2.0", features = ["with-backtrace"] }
 time = "0.1"
-x11 = "2.12"
+x11 = "2.18"
 xcb = "0.8"
 xcb-util = { version = "0.2", features = ["ewmh", "icccm", "keysyms"] }
-xdg = "2.1"
+xdg = "2.2"
